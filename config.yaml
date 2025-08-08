@@ -1,0 +1,9 @@
+db:
+  host: aact-db.ctti-clinicaltrials.org
+  port: 5432
+  dbname: aact
+  user: pathakganesh
+  password: clinicaltrial@1
+
+output:
+  path: data/aact_extracted.csv
