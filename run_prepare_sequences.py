@@ -1,6 +1,6 @@
 # run_prepare_sequences.py
 
-from prepare_sequences import build_sequences
+from src.prepare_sequences import build_sequences
 
 X, y = build_sequences("data/aact_extracted.csv")
 

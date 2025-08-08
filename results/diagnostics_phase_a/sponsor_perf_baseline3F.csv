@@ -1,0 +1,901 @@
+sponsor,n_samples,auc
+4D pharma plc,7,0.8333333333333334
+"AB Biotics, SA",22,0.4305555555555556
+ADC Therapeutics S.A.,19,0.32142857142857145
+AEterna Zentaris,33,0.6293103448275863
+AHEPA University Hospital,31,0.39655172413793105
+ALX Oncology Inc.,8,0.16666666666666669
+AM-Pharma,11,0.43333333333333335
+AO Innovation Translation Center,29,0.31
+APR Applied Pharma Research s.a.,13,0.3888888888888889
+ARCAGY/ GINECO GROUP,47,0.627906976744186
+ASTORA Women's Health,6,0.888888888888889
+AbGenomics B.V Taiwan Branch,6,1.0
+Abbott Nutrition,151,0.5385496183206107
+Acandis GmbH,8,0.0
+Ache Laboratorios Farmaceuticos S.A.,30,0.3950892857142857
+"Aclaris Therapeutics, Inc.",34,0.4166666666666667
+Advanz Pharma,9,0.4285714285714286
+Affimed GmbH,8,0.0
+Agouron Pharmaceuticals,5,0.33333333333333337
+"AiViva BioPharma, Inc.",5,0.0
+Ajou University School of Medicine,165,0.5667701863354038
+Akesobio Australia Pty Ltd,8,0.4285714285714286
+Aktiia SA,10,0.2222222222222222
+Albert Einstein Healthcare Network,60,0.4872685185185185
+Algemeen Ziekenhuis Maria Middelares,32,0.05357142857142855
+AlgiPharma AS,5,0.8333333333333334
+Allena Pharmaceuticals,11,0.33333333333333337
+Allergan,505,0.6574248120300752
+Alliance for Clinical Trials in Oncology,493,0.6400587163393399
+Allina Health System,38,0.5253456221198156
+AlloSource,7,0.0
+"Alza Corporation, DE, USA",18,0.4375
+American Academy of Family Physicians,5,0.0
+Amorphical Ltd.,8,0.13333333333333336
+"Amsterdam UMC, location VUmc",291,0.6669482933423454
+"AnaptysBio, Inc.",15,0.5
+Anchiano Therapeutics Israel Ltd.,5,0.5
+Andalusian Initiative for Advanced Therapies - Fundación Pública Andaluza Progreso y Salud,19,0.5208333333333334
+"Andrew Hendifar, MD",5,0.0
+Andrews Research & Education Foundation,17,0.28571428571428575
+Angiochem Inc,6,0.0
+"Angiodynamics, Inc.",15,0.5
+"Anhui Zhifei Longcom Biologic Pharmacy Co., Ltd.",46,0.24444444444444446
+Ankara City Hospital Bilkent,293,0.7363013698630136
+Ankara Yildirim Beyazıt University,171,0.03529411764705881
+Apifix,5,0.16666666666666669
+"Apollo Endosurgery, Inc.",7,0.4
+Apsen Farmaceutica S.A.,9,0.11111111111111108
+Aquinox Pharmaceuticals (Canada) Inc.,6,0.0
+"Aravive, Inc.",5,0.75
+Arbutus Biopharma Corporation,10,0.3333333333333333
+Ardelyx,27,0.6538461538461539
+Arizona State University,214,0.6571969696969697
+"Array Biopharma, now a wholly owned subsidiary of Pfizer",24,0.775
+Asir John Samuel,25,0.5757575757575757
+Asklepios proresearch,12,0.3333333333333333
+Atara Biotherapeutics,6,0.5
+"Atea Pharmaceuticals, Inc.",29,0.32999999999999996
+Australian and New Zealand Intensive Care Research Centre,45,0.6136363636363636
+Austrian Breast & Colorectal Cancer Study Group,18,0.1777777777777778
+"Avinger, Inc.",7,0.09999999999999998
+Azienda Ospedaliera Universitaria Integrata Verona,86,0.39634146341463417
+Azienda Ospedaliero-Universitaria Careggi,69,0.4494949494949495
+Azienda Policlinico Umberto I,25,0.08333333333333337
+B. Braun Medical Inc.,10,0.5416666666666667
+Bakirkoy Dr. Sadi Konuk Research and Training Hospital,97,0.27083333333333337
+Baltimore VA Medical Center,18,0.25
+Bangor University,13,0.0
+"Banyan Biomarkers, Inc",8,0.0
+Barts & The London NHS Trust,146,0.47222222222222215
+Basilea Pharmaceutica,46,0.4333333333333333
+Bayside Health,105,0.6331018518518519
+"Beckman Coulter, Inc.",29,0.962962962962963
+Beijing Tiantan Hospital,352,0.9401709401709402
+BelkinVision,5,0.5
+Benno Rehberg-Klug,8,0.1428571428571429
+"Bernardino Clavo, MD, PhD",7,0.5
+Bezmialem Vakif University,293,0.5243055555555556
+Bial - Portela C S.A.,132,0.4551181102362205
+BioNTech SE,58,0.40896358543417366
+Biodel,15,0.0
+Bioiberica,12,0.18181818181818177
+"Biomet Orthopedics, LLC",16,0.41818181818181815
+Bionovo,7,0.0
+Bioprojet,27,0.5434782608695653
+Bioray Laboratories,21,0.5666666666666667
+Biota Scientific Management Pty Ltd,8,0.0
+Biotec Pharmacon ASA,8,0.0
+"Biotech Pharmaceutical Co., Ltd.",26,0.5652173913043478
+Biotronik AG,39,0.4357142857142857
+Birte Glenthoj,6,0.0
+Blueprint Medicines Corporation,23,0.6578947368421053
+Borstkanker Onderzoek Groep,7,0.0
+Boston Children's Hospital,569,0.5769268532155131
+Boston University,265,0.4702465623518255
+Boston University Charles River Campus,125,0.6004784688995216
+Bournemouth University,46,0.47619047619047616
+Brighton and Sussex University Hospitals NHS Trust,21,0.46296296296296297
+Bristol-Myers Squibb,1444,0.5163030507711359
+Buckinghamshire Healthcare NHS Trust,7,0.0
+Butler Hospital,111,0.5075471698113208
+C. R. Bard,98,0.49085365853658536
+CENTOGENE GmbH Rostock,56,0.7523056653491437
+CMC Ambroise Paré,42,0.49158249158249157
+CONRAD,36,0.6857142857142857
+"CSPC ZhongQi Pharmaceutical Technology Co., Ltd.",145,0.504102564102564
+CStone Pharmaceuticals,26,0.6799999999999999
+Can-Fite BioPharma,20,0.4705882352941176
+CanSino Biologics Inc.,34,0.4623655913978494
+Canadian Forces Health Services Centre Ottawa,7,0.09999999999999998
+Canandaigua VA Medical Center,9,0.07142857142857145
+"Cancer Institute and Hospital, Chinese Academy of Medical Sciences",256,0.6313725490196078
+CancerCare Manitoba,10,0.08333333333333334
+Cantonal Hospital of St. Gallen,73,0.46969696969696967
+CardioFocus,9,0.375
+CardioKine Inc.,6,0.19999999999999996
+Cardioangiologisches Centrum Bethanien,12,0.36363636363636365
+Cardiochirurgia E.H.,13,0.7727272727272727
+Carelon Research,54,0.5570652173913043
+"Carevive Systems, Inc.",11,0.19999999999999996
+Carmel Medical Center,117,0.5637860082304527
+Carrick Institute for Graduate Studies,16,0.5272727272727272
+Catabasis Pharmaceuticals,12,0.8181818181818181
+Catholic University of the Sacred Heart,220,0.5615264797507789
+"Cellid Co., Ltd.",7,0.0
+"CeloNova BioSciences, Inc.",5,0.0
+Center for Human Reproduction,12,0.84375
+"Centocor, Inc.",70,0.5546875
+Central European Cooperative Oncology Group,11,0.26666666666666666
+Central Finland Hospital District,14,0.15384615384615385
+"Central Hospital, Nancy, France",735,0.43068982467638867
+Central Jutland Regional Hospital,28,0.7692307692307692
+Centre Cardiologique du Nord,8,0.1428571428571429
+Centre Hospitalier Departemental Vendee,75,0.44279661016949157
+Centre Hospitalier Henri Duffaut - Avignon,7,0.4
+Centre Hospitalier Régional Metz-Thionville,108,0.6094276094276094
+Centre Hospitalier Régional d'Orléans,112,0.6377708978328174
+Centre Hospitalier Universitaire Vaudois,190,0.5202312138728324
+Centre de Recherche de l'Institut Universitaire en santé Mentale de Montréal,7,0.0
+Centre de Recherches et d'Etude sur la Pathologie Tropicale et le Sida,18,0.11764705882352944
+Centre for Infectious Disease Research in Zambia,24,0.34782608695652173
+Centre for the AIDS Programme of Research in South Africa,15,0.2692307692307692
+Changhai Hospital,314,0.4972943722943723
+"Charles University, Czech Republic",190,0.6149732620320856
+"Chia Tai Tianqing Pharmaceutical Group Co., Ltd.",285,0.26602282704126423
+Children's & Women's Health Centre of British Columbia,9,0.14285714285714285
+Children's Cancer Hospital Egypt 57357,15,0.46153846153846156
+Children's Hospital Los Angeles,144,0.5986328125
+Children's Hospital of Philadelphia,459,0.6510036496350364
+Children's Mercy Hospital Kansas City,205,0.5168705969595847
+Chr Hansen,12,0.09090909090909094
+Christiana Care Health Services,90,0.5092592592592593
+Chroma Therapeutics,7,0.16666666666666663
+Clalit Health Services,43,0.35365853658536583
+Claudia Spies,11,0.20833333333333331
+"Clearside Biomedical, Inc.",13,0.2272727272727273
+Cleveland Clinic Akron General,5,0.0
+ClinAmygate,15,0.0714285714285714
+Clover Biopharmaceuticals AUS Pty,15,0.5357142857142857
+"Cohera Medical, Inc.",8,0.4166666666666667
+Coloplast A/S,141,0.5013986013986014
+Complexo Hospitalario Universitario de A Coruña,9,0.25
+Connect Biopharm LLC,11,0.2777777777777778
+"ContraVir Pharmaceuticals, Inc.",5,0.0
+Cook Group Incorporated,70,0.5254237288135593
+Cook Research Incorporated,28,0.14814814814814814
+"Coordinación de Investigación en Salud, Mexico",91,0.4539295392953929
+CorEvitas,20,0.6842105263157895
+Cordis Corporation,72,0.544921875
+"Cortice Biosciences, Inc.",5,0.75
+"Corvus Pharmaceuticals, Inc.",8,0.7142857142857143
+Cosmetique Active International,50,0.8229166666666666
+"Craig L Slingluff, Jr",23,0.37500000000000006
+"Criterium, Inc.",12,0.25
+"CytoDyn, Inc.",20,0.19607843137254902
+Cytori Therapeutics,16,0.6333333333333334
+D'Or Institute for Research and Education,38,0.027027027027026973
+"DSM Nutritional Products, Inc.",40,0.19819819819819817
+"DUSA Pharmaceuticals, Inc.",10,0.0
+Daewoong Pharmaceutical Co. LTD.,182,0.5156976744186046
+"Dalarna County Council, Sweden",21,0.6
+Damascus Hospital,6,0.25
+Danderyd Hospital,53,0.5051020408163265
+"Danone Asia Pacific Holdings Pte, Ltd.",25,0.4404761904761905
+Dartmouth-Hitchcock Medical Center,459,0.566328958999116
+"David Rizzieri, MD",8,0.3333333333333333
+Dayanand Medical College and Hospital,7,0.0
+DePuy Spine,10,0.0
+Dendreon,19,0.49999999999999994
+Dentsply Sirona Implants and Consumables,32,0.5172413793103448
+DiaMedica Therapeutics Inc,6,0.6
+"Dicerna Pharmaceuticals, Inc., a Novo Nordisk company",16,0.6041666666666667
+Dompé Farmaceutici S.p.A,47,0.5126262626262627
+Dorte Nielsen,5,0.33333333333333337
+Dosentrx Ltd.,5,0.0
+Dr. Grace Parraga,5,0.25
+Drugs for Neglected Diseases,56,0.5336538461538461
+Duomed,11,0.20833333333333331
+Duramed Research,23,0.18181818181818177
+Dutch Colorectal Cancer Group,8,0.0
+"DynPort Vaccine Company LLC, A GDIT Company",8,0.5
+E-DA Hospital,32,0.4022988505747126
+ECOG-ACRIN Cancer Research Group,115,0.48868778280542985
+ECRI bv,14,0.4242424242424242
+EMS,79,0.646011396011396
+EVIVE Biotechnology,10,0.5
+Eastbourne General Hospital,9,0.25
+Eiger BioPharmaceuticals,11,0.0
+"Eisai Co., Ltd.",150,0.5510204081632653
+"Eko Devices, Inc.",11,0.0
+ElMindA Ltd,19,0.3529411764705882
+Eli Lilly and Company,1937,0.532088523269505
+Elsan,58,0.37500000000000006
+Elysium Health,7,0.39999999999999997
+Emory University,1319,0.5852463094395945
+"Enanta Pharmaceuticals, Inc",41,0.44594594594594594
+Endo Pharmaceuticals,105,0.45721583652618136
+EndoCeutics Inc.,8,0.5
+Endocrine Research Society,10,0.25
+Endocyte,28,0.6212121212121212
+Enlivex Therapeutics Ltd.,5,0.0
+Ensoma,5,0.33333333333333337
+"Epic Research & Diagnostics, Inc.",5,0.25
+Esanex Inc.,11,0.6785714285714286
+"Escient Pharmaceuticals, Inc",5,0.0
+"Ethicon, Inc.",65,0.5042016806722689
+Europainclinics z.ú.,12,1.0
+European Society for Blood and Marrow Transplantation,27,0.6111111111111112
+"Evelo Biosciences, Inc.",9,0.2142857142857143
+Ever Neuro Pharma GmbH,8,0.6
+Exactech,16,0.7272727272727273
+Exelixis,48,0.5063025210084033
+Eyetech Pharmaceuticals,9,0.4285714285714286
+F2G Biotech GmbH,19,0.4428571428571429
+FHI 360,57,0.48379629629629634
+Faculty Hospital Kralovske Vinohrady,26,0.24
+"Faes Farma, S.A.",16,0.19999999999999996
+Fayoum University Hospital,60,0.3706896551724138
+"Federal Research Clinical Center of Federal Medical & Biological Agency, Russia",11,0.19999999999999996
+Federal University of Mato Grosso,14,0.625
+FeetMe,5,0.0
+Fidec Corporation,10,0.375
+First Affiliated Hospital Xi'an Jiaotong University,297,0.3424971363115693
+Florida International University,89,0.75
+Fondation Lenval,57,0.5518867924528301
+Fondazione Don Carlo Gnocchi Onlus,173,0.6918604651162791
+"Fondazione IRCCS Ca' Granda, Ospedale Maggiore Policlinico",190,0.4955436720142602
+"Foresee Pharmaceuticals Co., Ltd.",13,0.7222222222222223
+Forest Laboratories,167,0.4658816425120773
+Francisco Selva,6,0.11111111111111112
+Fraser Health,32,0.6888888888888889
+Fraunhofer-Institute of Toxicology and Experimental Medicine,35,0.6764705882352942
+French Innovative Leukemia Organisation,56,0.5966666666666667
+Fujian Cancer Hospital,136,0.6488549618320612
+"Fujifilm Medical Systems USA, Inc.",12,0.09090909090909094
+Fundacio d'Investigacio en Atencio Primaria Jordi Gol i Gurina,149,0.4474885844748858
+Fundación Santa Fe de Bogota,19,0.29411764705882354
+GAAD Medical Research Institute Inc.,21,0.5
+GGZ Centraal,6,0.0
+GH Research Ireland Limited,7,0.3
+"GI Windows, Inc.",10,0.33333333333333337
+GW Pharmaceuticals Ltd,6,0.75
+Gachon University Gil Medical Center,87,0.4835390946502058
+Gadjah Mada University,37,0.0
+Gangnam Severance Hospital,135,0.25
+"Gaylord Hospital, Inc",6,0.888888888888889
+General Hospital of Shenyang Military Region,59,0.46855345911949686
+Genfit,18,0.39999999999999997
+"Genovate Biotechnology Co., Ltd.,",12,0.3
+Genta Incorporated,26,0.3333333333333333
+"Genzyme, a Sanofi Company",301,0.5052855924978688
+Georgia Institute of Technology,21,0.5
+Gitte Moos Knudsen,7,0.3
+"Gladwin, Mark, MD",12,0.31428571428571433
+Global Blood Therapeutics,8,0.8333333333333334
+Gloucestershire Hospitals NHS Foundation Trust,14,0.07692307692307687
+Goethe University,93,0.4347826086956522
+Golden Jubilee National Hospital,26,0.5625
+Greater Houston Retina Research,9,0.0
+Green Beat,7,0.0
+Groupe Hospitalier Mutualiste de Grenoble,9,0.5
+Groupe Hospitalier Pitie-Salpetriere,56,0.38181818181818183
+Groupe Oncologie Radiotherapie Tete et Cou,29,0.35
+Grupo Español de Investigación en Cáncer de Ovario,13,0.08333333333333337
+Grupo Español de Linfomas y Transplante Autólogo de Médula Ósea,20,0.368421052631579
+Gruppo Italiano per la Valutazione degli Interventi in Terapia Intensiva,6,0.6
+Gruppo Oncologico del Nord-Ovest,35,0.0
+Grünenthal GmbH,62,0.5630952380952381
+Guangzhou Institute of Respiratory Disease,95,0.5752688172043011
+"Gustave Roussy, Cancer Campus, Grand Paris",223,0.6377289377289378
+Guy's and St Thomas' NHS Foundation Trust,264,0.65890285013791
+Göteborg University,257,0.5490358126721764
+H. Lundbeck A/S,218,0.4878246753246753
+HIV Prevention Trials Network,20,0.368421052631579
+Hacettepe University,826,0.7018181818181819
+Hackensack Meridian Health,96,0.5524507558405862
+Hal C Charles,7,0.0
+Hamamatsu University,20,0.3055555555555556
+Hamilton Health Sciences Corporation,234,0.4353238015138772
+"Hangzhou Sumgen Biotech Co., Ltd.",6,0.0
+Hansa Biopharma AB,15,0.3333333333333333
+Harbin Medical University,71,0.6584821428571428
+Harvard School of Public Health (HSPH),149,0.5913793103448276
+Harvest Technologies,6,0.125
+"HeartFlow, Inc.",8,0.0
+Hebei Medical University,40,0.9210526315789473
+Helse Nord-Trøndelag HF,23,0.5454545454545454
+"HemCon Medical Technologies, Inc",6,0.125
+Henan Institute of Cardiovascular Epidemiology,27,0.5
+Henogen,5,0.0
+Henry M. Jackson Foundation for the Advancement of Military Medicine,77,0.46376811594202894
+"HepNet Study House, German Liverfoundation",6,0.125
+HiPP GmbH & Co. Vertrieb KG,6,0.375
+"Holy Cross Hospital, Florida",5,0.16666666666666669
+Hong Kong Baptist University,74,0.8356164383561644
+HonorHealth Research Institute,20,0.45333333333333337
+Hopital of Melun,7,0.0
+Hospices Civils de Lyon,1718,0.5015267707752371
+"Hospira, now a wholly owned subsidiary of Pfizer",27,0.6805555555555556
+"Hospital Authority, Hong Kong",77,0.4248826291079812
+Hospital General Universitario Gregorio Marañon,55,0.608
+Hospital General de Mexico,25,0.20833333333333337
+Hospital Universitario Reina Sofia de Cordoba,12,0.0
+Hospital Universitario de Canarias,29,0.0
+Hospital de Clinicas de Porto Alegre,426,0.5167553573996836
+Huashan Hospital,212,0.2833333333333333
+Hull University Teaching Hospitals NHS Trust,84,0.4407894736842105
+"HyGIeaCare, Inc.",6,0.5
+Hôpital Necker-Enfants Malades,18,0.2941176470588235
+I.R.C.C.S Ospedale Galeazzi-Sant'Ambrogio,133,0.617948717948718
+I.R.C.C.S. Fondazione Santa Lucia,48,0.14893617021276595
+ID3 Medical,10,0.0
+"INTRuST, Post-Traumatic Stress Disorder - Traumatic Brain Injury Clinical Consortium",9,0.4444444444444444
+"IRCCS San Camillo, Venezia, Italy",41,0.050000000000000044
+IRCCS San Raffaele Roma,54,0.7142857142857142
+Ichnos Sciences SA,6,0.11111111111111112
+Idaho State University,8,0.0
+IlDong Pharmaceutical Co Ltd,49,0.3623188405797101
+"ImaginAb, Inc.",6,0.25
+ImmVira Pharma Co. Ltd,6,0.0
+ImmunoGenesis,7,0.5
+"Immunome, Inc.",6,0.0
+Imperial College Healthcare NHS Trust,75,0.5648148148148148
+Imugene Limited,6,0.19999999999999996
+Imunon,14,0.2727272727272727
+Incheon St.Mary's Hospital,16,0.6
+Incyte Biosciences Japan GK,5,0.0
+Indiana Hand to Shoulder Center,8,0.5
+Indiana Kidney Stone Institute,15,0.3571428571428571
+Indus Hospital and Health Network,11,0.16666666666666669
+"Inhibrx Biosciences, Inc",5,0.0
+Innocoll,20,0.3333333333333333
+Inova Health Care Services,77,0.6305785123966942
+Inovio Pharmaceuticals,30,0.6442307692307692
+Institut Investigacio Sanitaria Pere Virgili,25,0.17391304347826086
+Institut Pasteur,89,0.55
+Institut d'Anesthesiologie des Alpes Maritimes,5,0.0
+Institut de Cancérologie de Lorraine,59,0.7456140350877194
+Institut de Recherche Biomedicale des Armees,11,0.0
+Institut für Pharmakologie und Präventive Medizin,28,0.40740740740740744
+"Institut universitaire de cardiologie et de pneumologie de Québec, University Laval",11,0.09999999999999998
+"Institute of Psychiatry, London",8,0.0
+"Institute of Technology, Sligo",7,0.2
+Instituto Brasileiro de Controle do Cancer,12,0.0
+Instituto Dante Pazzanese de Cardiologia,16,0.2666666666666667
+Instituto Nacional de Ciencias Medicas y Nutricion Salvador Zubiran,135,0.48238482384823844
+Instituto Nacional de Psiquiatría Dr. Ramón de la Fuente,12,0.0
+Intarcia Therapeutics,20,0.3406593406593406
+International Food Policy Research Institute,32,0.6451612903225806
+Investigación en Hemofilia y Fisioterapia,49,0.8378378378378378
+Istanbul Medipol University Hospital,304,0.5148514851485149
+Istituto Clinico Humanitas,252,0.5523012552301255
+Italfarmaco,33,0.7222222222222222
+J&M Shuler,7,0.16666666666666663
+JW Pharmaceutical,68,0.8507462686567164
+James J. Peters Veterans Affairs Medical Center,48,0.5965909090909091
+"Janssen Biotech, Inc.",11,0.5555555555555556
+Janssen Infectious Diseases BVBA,12,0.09090909090909094
+Janssen R&D Ireland,31,0.2261904761904762
+"Janssen Scientific Affairs, LLC",38,0.42647058823529416
+"Janssen-Cilag, S.A.",17,0.4047619047619047
+Jason Sperry,8,0.0
+Jens Rikardt Andersen,22,0.23809523809523814
+"Jiangsu Alphamab Biopharmaceuticals Co., Ltd",28,0.40909090909090906
+"Jiangsu HengRui Medicine Co., Ltd.",528,0.5440398185483872
+"Jiangsu Simcere Pharmaceutical Co., Ltd.",66,0.140625
+Johann Wolfgang Goethe University Hospital,154,0.525
+John Sundy,5,0.16666666666666666
+Johnson & Johnson Consumer Inc. (J&JCI),54,0.4444444444444445
+"Johnson & Johnson Pharmaceutical Research & Development, L.L.C.",442,0.5281831641285957
+"Johnson & Johnson Vision Care, Inc.",216,0.5384615384615384
+Jules Desmeules,6,0.0
+Julie Dawson,13,0.6666666666666666
+"Juno Therapeutics, a Subsidiary of Celgene",10,0.11111111111111116
+Kaohsiung Kai-Suan Psychiatric Hospital,8,0.3333333333333333
+Kaohsiung Veterans General Hospital.,100,0.6377551020408163
+Karuna Therapeutics,16,0.4666666666666667
+Karyopharm Therapeutics Inc,35,0.46381578947368424
+Kathleen Dungan,5,0.75
+Kettering Health Network,15,0.3888888888888889
+"Kezar Life Sciences, Inc.",6,0.25
+Khyber Medical University Peshawar,29,0.3214285714285714
+King Faisal Specialist Hospital & Research Center,95,0.603359173126615
+King's College Hospital NHS Trust,152,0.5810502283105023
+Knopp Biosciences,12,0.0
+Kocaeli City Hospital,19,0.5555555555555556
+Koite Health Oy,12,0.35
+Korea United Pharm. Inc.,12,0.2727272727272727
+Korean Medicine Hospital of Pusan National University,12,0.14814814814814814
+"Kowa Research Institute, Inc.",45,0.44
+Krankenhaus Nordwest,13,0.13636363636363635
+Kubota Vision Inc.,19,0.05555555555555558
+Kumamoto University,21,0.30000000000000004
+"Kura Oncology, Inc.",14,0.22500000000000003
+Kyungpook National University Hospital,77,0.5733333333333333
+L.V. Prasad Eye Institute,12,0.0
+LEO Pharma,217,0.6470771144278606
+LG Chem,64,0.7540983606557378
+LMU Klinikum,48,0.31521739130434784
+LUTRONIC Corporation,12,0.0
+LYSOGENE,5,0.0
+LaNova Medicines Limited,11,0.8571428571428571
+Laniado Hospital,10,0.11111111111111116
+Lantheus Medical Imaging,25,0.5151515151515151
+Lawrence Charles Hookey,6,0.0
+"Leap Therapeutics, Inc.",9,0.125
+Lenstec Incorporated,5,0.5
+Lion TCR Pte. Ltd.,5,0.0
+"Liquidia Technologies, Inc.",6,0.4
+Liverpool Heart and Chest Hospital NHS Foundation Trust,27,0.42857142857142855
+London Health Sciences Centre Research Institute OR Lawson Research Institute of St. Joseph's,658,0.5335013823385917
+London School of Hygiene and Tropical Medicine,291,0.47793538219070136
+Longeveron Inc.,9,0.0
+Louis Stokes VA Medical Center,11,0.4
+"Loxo Oncology, Inc.",15,0.5714285714285714
+Ludwig Boltzmann Gesellschaft,6,0.0
+LumiraDx UK Limited,15,0.1923076923076923
+Lupin Ltd.,13,0.41666666666666663
+LycoRed Ltd.,9,0.0
+Lykos Therapeutics,27,0.4571428571428571
+MC2 Therapeutics,8,0.1428571428571429
+MEDA Pharma GmbH & Co. KG,22,0.04761904761904767
+MaaT Pharma,8,0.0
+Maastricht Radiation Oncology,104,0.665625
+Maastricht University Medical Center,816,0.5197204968944099
+"Macquarie University, Australia",6,0.25
+Mahidol University,683,0.49730538922155687
+Maisonneuve-Rosemont Hospital,72,0.391304347826087
+Makerere University,138,0.3897058823529412
+"Manhattan Eye, Ear & Throat Hospital",14,0.3
+Mario Negri Institute for Pharmacological Research,145,0.5564713064713065
+Marshfield Clinic Research Foundation,7,0.0
+"Mast Therapeutics, Inc.",13,0.5454545454545454
+Maternal and Child Health Hospital of Foshan,7,0.6666666666666666
+"Mathematica Policy Research, Inc.",48,0.6382978723404256
+Mati Therapeutics Inc.,14,0.20833333333333331
+Medacta International SA,44,0.2682926829268293
+"Medecins Sans Frontieres, Netherlands",13,0.41666666666666663
+Medi-Tate Ltd.,6,0.6666666666666666
+Medical University of Gdansk,103,0.7033333333333333
+Medical University of Graz,432,0.4888808924073408
+Medicrea International,7,0.2
+Medipol University,200,0.71875
+Medivir,8,0.2857142857142857
+Medtronic Cardiac Ablation Solutions,30,0.03448275862068961
+Medtronic Spine LLC,7,0.3333333333333333
+Medtronic Surgical Technologies,13,0.3333333333333333
+MedtronicNeuro,70,0.3680555555555555
+MeiraGTx UK II Ltd,9,0.5
+"Melinta Therapeutics, Inc.",31,0.4537037037037037
+Mendus,6,0.19999999999999996
+Menoufia University,149,0.41216216216216217
+"Mental Health Services in the Capital Region, Denmark",86,0.6071428571428572
+Merck Sharp & Dohme LLC,2032,0.5536152046196708
+Methodist Healthcare,5,0.0
+MetroHealth Medical Center,95,0.49999999999999994
+Michigan State University,130,0.718931475029036
+Midwestern Regional Medical Center,8,0.6
+Military Institute od Medicine National Research Institute,36,0.338235294117647
+Milton S. Hershey Medical Center,466,0.5546004457179242
+Minneapolis Veterans Affairs Medical Center,36,0.7421875
+Mirati Therapeutics Inc.,48,0.4560185185185185
+Mitsubishi Tanabe Pharma America Inc.,24,0.4603174603174603
+Mitsubishi Tanabe Pharma Corporation,148,0.5562310030395137
+Mode Sensors AS,7,0.2
+"Momenta Pharmaceuticals, Inc.",9,0.16666666666666666
+Montefiore Medical Center,379,0.5505415162454874
+Mustafa Kemal University,58,0.543859649122807
+"Myriad Genetic Laboratories, Inc.",15,0.30357142857142855
+"NGM Biopharmaceuticals, Inc",24,0.5
+NHS Lothian,48,0.2511627906976744
+"NKGen Biotech, Inc.",6,0.4444444444444445
+Nanchong Central Hospital,14,0.15384615384615385
+Nantes University Hospital,765,0.6641452344931921
+Nanyang Technological University,37,0.08333333333333337
+"Nasser Hanna, M.D.",7,0.75
+National Center for Research Resources (NCRR),170,0.3073852295409181
+"National Cerebral and Cardiovascular Center, Japan",18,0.53125
+National Cheng-Kung University Hospital,243,0.6181434599156118
+"National Dental Centre, Singapore",5,0.0
+"National Institute of Cardiology, Warsaw, Poland",49,0.48936170212765956
+"National Institute of Cardiovascular Diseases, Pakistan",16,0.0
+National Institute of Diabetes and Digestive and Kidney Diseases (NIDDK),506,0.5396459227467811
+"National Institute of Pediatrics, Mexico",7,0.0
+National Institute on Alcohol Abuse and Alcoholism (NIAAA),91,0.6842818428184282
+National Institutes of Health Clinical Center (CC),356,0.6987377279102384
+"National Research Centre for the Working Environment, Denmark",20,0.3157894736842105
+"National University of Ireland, Galway, Ireland",43,0.6025641025641026
+National University of Natural Medicine,30,0.40384615384615385
+National Yang Ming Chiao Tung University,179,0.5511363636363635
+Navidea Biopharmaceuticals,18,0.2716049382716049
+Nearmedic Plus LLC,8,0.2857142857142857
+Nektar Therapeutics,36,0.5102880658436215
+NeoImmuneTech,5,0.16666666666666669
+Nerviano Medical Sciences,14,0.29166666666666663
+Neuren Pharmaceuticals Limited,12,0.55
+Neurological Associates of West Los Angeles,25,0.4444444444444444
+Neuronetics,11,0.22222222222222227
+New Approaches to Neuroblastoma Therapy Consortium,16,0.19999999999999996
+New England Retina Associates,5,0.5
+New York City Health and Hospitals Corporation,27,0.5
+Newron Pharmaceuticals SPA,20,0.5
+Next Science TM,9,0.33333333333333337
+Nimble Science Ltd.,7,0.0
+Ningbo No. 1 Hospital,54,0.07547169811320753
+Nobel Biocare,17,0.36538461538461536
+Nordic Society of Gynaecological Oncology - Clinical Trials Unit,14,0.4545454545454545
+North Eastern German Society of Gynaecological Oncology,14,0.23076923076923073
+North Karelia Central Hospital,16,0.5714285714285714
+North Texas Veterans Healthcare System,29,0.6083333333333334
+Northeastern University,43,0.32499999999999996
+Northern California Retina Vitreous Associates,5,0.0
+Norwegian School of Sport Sciences,41,0.5675675675675675
+Nova Southeastern University,70,0.48615384615384616
+Novacea,9,0.5
+Novartis Gene Therapies,7,0.33333333333333337
+Novo Nordisk A/S,1299,0.5324265747867404
+"NuTech Medical, Inc",8,0.0
+Nutricia Research,43,0.19473684210526315
+Nutricia UK Ltd,24,0.5
+Obafemi Awolowo University,15,0.3846153846153846
+ObsEva SA,9,0.0
+Ocera Therapeutics,6,0.125
+Octapharma,69,0.4766081871345029
+"Ocular Therapeutix, Inc.",29,0.5357142857142857
+Ohio State University Comprehensive Cancer Center,328,0.4797619047619047
+OhioHealth,24,0.3986013986013986
+Okan University,74,0.06849315068493156
+Olivia Newton-John Cancer Research Institute,8,0.0
+"Oncoimmune, Inc., a subsidiary of Merck & Co., Inc. (Rahway, New Jersey USA)",5,0.6666666666666666
+Ono Pharmaceutical Co. Ltd,97,0.5586080586080586
+Onze Lieve Vrouw Hospital,19,0.08823529411764708
+Optimal Health Research,7,0.16666666666666663
+"Ortho Biotech Products, L.P.",11,0.5333333333333333
+"Ortho-McNeil Janssen Scientific Affairs, LLC",15,0.11111111111111112
+Orthofix Inc.,13,0.3
+Orthofix s.r.l.,9,0.5
+Oshadi Drug Administration,8,0.8333333333333334
+Osiris Therapeutics,6,0.33333333333333337
+Ospedale Generale Di Zona Moriggia-Pelascini,35,0.4411764705882353
+"Otonomy, Inc.",21,0.6875
+Ottawa Hospital Research Institute,524,0.5498074229691877
+POZEN,26,0.31999999999999995
+Palo Alto Veterans Institute for Research,47,0.3904761904761905
+"Pamlab, Inc.",9,0.0
+Paratek Pharmaceuticals Inc,11,0.3888888888888889
+Parc Taulí Hospital Universitari,10,0.0
+Pascoe Pharmazeutische Praeparate GmbH,14,0.07692307692307687
+Pavol Jozef Safarik University,12,0.3
+Penumbra Inc.,31,0.4846153846153846
+Peplin,28,0.2222222222222222
+"Perosphere Pharmaceuticals Inc, a wholly owned subsidiary of AMAG Pharmaceuticals, Inc.",10,0.33333333333333337
+Perry Renshaw,6,0.0
+Pharmacosmos A/S,32,0.0
+Pharmacyclics LLC.,43,0.5157894736842106
+PhaseBio Pharmaceuticals Inc.,12,0.7037037037037037
+Philips Electronics Nederland B.V. acting through Philips CTO organization,16,0.6666666666666666
+Phillip Brian Smith,7,0.0
+Photocure,20,0.3725490196078431
+Phramongkutklao College of Medicine and Hospital,35,0.20588235294117652
+Piedmont Healthcare,15,0.38888888888888895
+Pierre Fabre Dermo Cosmetique,45,0.5213675213675214
+Pirogov Russian National Research Medical University,41,0.576923076923077
+Pluristem Ltd.,9,0.7142857142857142
+Polares Medical SA,5,0.16666666666666669
+"Poseida Therapeutics, Inc.",5,0.5
+Poznan University of Medical Sciences,111,0.3761467889908257
+"Prim. Prof. Dr. Oliver Findl, MBA",34,0.6060606060606061
+Primus Pharmaceuticals,18,0.5535714285714286
+"Princess Anna Mazowiecka Hospital, Warsaw, Poland",11,0.3888888888888889
+"Princess Margaret Hospital, Hong Kong",7,0.0
+Princess Nourah Bint Abdulrahman University,20,0.1578947368421053
+Prokidney,9,0.0
+Prolong Pharmaceuticals,14,0.275
+"Proteus Digital Health, Inc.",5,0.0
+Prothya Biosolutions,14,0.0
+Public Health England,35,0.48958333333333326
+Pulmatrix Inc.,14,0.5151515151515151
+"Puma Biotechnology, Inc.",36,0.5959595959595959
+Qifu Li,10,0.0
+"Queens College, The City University of New York",11,0.2142857142857143
+"Qure Healthcare, LLC",22,0.9122807017543859
+"R-Pharm International, LLC",11,0.09999999999999998
+RDD Pharma Ltd,9,0.24999999999999997
+RSP Systems A/S,15,0.15384615384615385
+RWTH Aachen University,224,0.5098995271867612
+Ramsay Générale de Santé,71,0.14492753623188404
+Real Imaging Ltd.,9,0.5
+Reckitt Benckiser Healthcare (UK) Limited,32,0.23703703703703707
+Region MidtJylland Denmark,7,0.33333333333333337
+Region Örebro County,113,0.5822649572649572
+"Regionshospitalet Viborg, Skive",11,0.0
+"Renibus Therapeutics, Inc.",8,0.1428571428571429
+Renovo,29,0.7222222222222222
+Reproductive & Genetic Hospital of CITIC-Xiangya,24,0.4736842105263158
+ResMed,98,0.7036144578313253
+Research Center Borstel,9,0.14285714285714285
+Research in Real-Life Ltd,22,0.38095238095238093
+"Respicardia, Inc.",7,0.16666666666666663
+"Reza Dana, MD",5,0.25
+Rhizen Pharmaceuticals SA,16,0.3090909090909091
+Rigel Pharmaceuticals,24,0.380952380952381
+"Rockwell Medical Technologies, Inc.",18,0.05882352941176472
+Romark Laboratories L.C.,27,0.25
+Roswell Park Cancer Institute,399,0.647344971813057
+Roxane Laboratories,98,0.979381443298969
+Royal Holloway University,7,0.6666666666666667
+Royal National Orthopaedic Hospital NHS Trust,7,0.16666666666666663
+Russian Cardiology Research and Production Center,7,0.16666666666666663
+"SCRI Development Innovations, LLC",176,0.6949013157894737
+"SK Life Science, Inc.",40,0.5855855855855856
+"SPR Therapeutics, Inc.",9,0.125
+Saint John's Cancer Institute,22,0.40625
+San Antonio Military Medical Center,11,0.09999999999999998
+San Antonio Uniformed Services Health Education Consortium,5,0.25
+San Filippo Neri General Hospital,9,0.25
+Sana Klinikum Offenbach,12,0.0
+Sangamo Therapeutics,27,0.4891304347826087
+Santhera Pharmaceuticals,22,0.35
+"Sarfez Pharmaceuticals, Inc.",9,0.28571428571428575
+"Schneider Children's Medical Center, Israel",10,0.09523809523809523
+Schulthess Klinik,48,0.3579545454545454
+Sciema UG,7,0.6666666666666667
+Scripps Clinic,5,0.75
+Scripps Translational Science Institute,50,0.5597826086956521
+"Scynexis, Inc.",18,0.3529411764705882
+Seattle Children's Hospital,199,0.6519607843137255
+SecuraBio,23,0.4603174603174603
+"Selecta Biosciences, Inc.",6,0.6
+"Senju Pharmaceutical Co., Ltd.",5,0.25
+Sensimed AG,27,0.49999999999999994
+Senthil G. Krishna,5,0.0
+Seqirus,52,0.26
+"Seres Therapeutics, Inc.",6,0.6
+Serum Institute of India Pvt. Ltd.,20,0.4736842105263158
+"Shanghai Ark Biopharmaceutical Co., Ltd.",16,0.0
+"Shanghai Bovax Biotechnology Co., Ltd.",12,0.18181818181818177
+Shanghai Fosun Pharmaceutical Industrial Development Co. Ltd.,11,0.4444444444444444
+"Shanghai General Hospital, Shanghai Jiao Tong University School of Medicine",121,0.3615819209039548
+Shanghai Jiao Tong University School of Medicine,334,0.5897435897435898
+Shanghai Mental Health Center,226,0.608294930875576
+"Shanghai Pulmonary Hospital, Shanghai, China",126,0.33870967741935487
+Shanghai Zhongshan Hospital,495,0.40489795918367344
+Sheffield Teaching Hospitals NHS Foundation Trust,201,0.458265139116203
+Shenyang Northern Hospital,33,0.09375
+Sherif S. Farag,5,0.5
+Shriners Hospitals for Children,55,0.372822299651568
+"Sichuan Baili Pharmaceutical Co., Ltd.",92,0.4222222222222222
+Sierra Oncology LLC - a GSK company,18,0.5555555555555556
+Sihuan Pharmaceutical Holdings Group Ltd.,22,0.8571428571428572
+SingHealth Polyclinics,18,0.25
+"Sinovac Biotech Co., Ltd",71,0.6285714285714286
+"Sirtris, a GSK Company",12,0.09090909090909094
+Skane University Hospital,68,0.07462686567164178
+Sklifosovsky Institute of Emergency Care,10,0.20833333333333334
+"Sobi, Inc.",6,0.5
+Societa Italiana di Chirurgia ColoRettale,14,0.5384615384615384
+Soligenix,10,0.7777777777777778
+Solventum US LLC,60,0.31555555555555553
+"Sorin Group USA, Inc.",5,0.5
+South Dakota State University,15,0.5714285714285714
+South Tyneside and Sunderland NHS Foundation Trust,11,0.0
+Southern Europe New Drug Organization,7,0.33333333333333337
+"Spark Therapeutics, Inc.",15,0.34615384615384615
+Sprim Advanced Life Sciences,6,0.0
+Spruce Biosciences,5,0.3333333333333333
+Spur Therapeutics,6,0.625
+St Vincent's Hospital Melbourne,15,0.0714285714285714
+"St Vincent's Hospital, Sydney",16,0.5384615384615384
+"St Vincent's University Hospital, Ireland",18,0.26666666666666666
+"St. Luke's Hospital, Chesterfield, Missouri",7,0.39999999999999997
+Stallergenes Greer,25,0.15217391304347827
+State University of New York - Upstate Medical University,149,0.5952380952380951
+"Stemline Therapeutics, Inc.",17,0.3333333333333333
+Steven E. Coutre,6,0.125
+"Stiefel, a GSK Company",55,0.6666666666666667
+"Stratatech, a Mallinckrodt Company",8,0.19999999999999998
+Stryker Trauma and Extremities,40,0.5391849529780565
+"Sucampo Pharma Americas, LLC",16,0.4615384615384615
+Sumitomo Pharma Switzerland GmbH,17,0.3333333333333333
+Summit Therapeutics,9,0.2142857142857143
+"Sunshine Lake Pharma Co., Ltd.",75,0.29929577464788737
+Sunstar Americas,9,0.5714285714285714
+"Suzhou Zelgen Biopharmaceuticals Co.,Ltd",74,0.6950757575757576
+Swiss Federal Institute of Technology,151,0.5137931034482759
+Sykehuset i Vestfold HF,22,0.38095238095238093
+SymBio Pharmaceuticals,23,0.4210526315789474
+Sándor Beniczky,6,0.0
+TRB Chemedica,6,0.0
+Tabula Rasa HealthCare,13,0.37500000000000006
+TaiMed Biologics Inc.,7,0.33333333333333337
+"Taiho Pharmaceutical Co., Ltd.",40,0.7027027027027027
+Taipei Medical University,217,0.4783018867924528
+"Taipei Veterans General Hospital, Taiwan",304,0.5585284280936454
+Taisho Pharmaceutical R&D Inc.,7,0.16666666666666663
+Taiwan Liposome Company,18,0.3333333333333333
+"Tango Therapeutics, Inc.",5,0.25
+Targeted Medical Pharma,6,0.375
+TecSalud Investigación Clínica,5,0.0
+Tehran University of Medical Sciences,223,0.6038359788359788
+Telik,19,0.7142857142857142
+Tempus AI,10,0.0
+Tengion,7,0.33333333333333337
+Terumo Europe N.V.,23,0.3833333333333333
+Texas A&M University,111,0.530188679245283
+Texas Woman's University,73,0.31592039800995025
+"The Adelaide and Meath Hospital, incorporating The National Children's Hospital",5,0.0
+The Archer-Daniels-Midland Company,16,0.2666666666666667
+The Chaim Sheba Medical Center,7,0.0
+The Clatterbridge Cancer Centre NHS Foundation Trust,10,0.0625
+The First Affiliated Hospital with Nanjing Medical University,443,0.5324377457404981
+The Foundation for Orthopaedics and Regenerative Medicine,31,0.3858695652173913
+The Hong Kong Polytechnic University,547,0.6354497354497355
+The New York Eye & Ear Infirmary,20,0.53125
+The Scripps Research Institute,16,0.19999999999999996
+The University of Queensland,82,0.3935810810810811
+The University of The West Indies,56,0.49056603773584906
+"Theranova, L.L.C.",12,0.0
+TherapeuticsMD,5,0.0
+Thirty Respiratory Limited,5,0.16666666666666666
+Tianjin Medical University General Hospital,60,0.5254237288135593
+Tibotec BVBA,17,0.0
+Tigenix S.A.U.,10,0.0
+Tisento Therapeutics,6,0.0
+Tocagen Inc.,7,0.4
+"Tragara Pharmaceuticals, Inc.",5,0.25
+TransMedics,23,0.5476190476190477
+Transgene,17,0.25
+Translational Biosciences,8,0.375
+Treatment Research Institute,18,0.0
+Trinity Health Michigan,7,0.5
+"TrueBinding, Inc.",5,0.16666666666666669
+Tsumura USA,8,0.2857142857142857
+Tulane University Health Sciences Center,12,0.40740740740740744
+Tularik,6,0.6666666666666666
+"Turtle Health, Inc.",6,0.375
+UCB Biopharma SRL,112,0.6117647058823529
+UMC Utrecht,343,0.4866980845241715
+UNEEG Medical A/S,11,0.32142857142857145
+UNION therapeutics,9,0.0
+USDA Grand Forks Human Nutrition Research Center,56,0.4799054373522459
+"USDA, Western Human Nutrition Research Center",51,0.40816326530612246
+Ulsan University Hospital,22,0.4
+Unilever R&D,66,0.8
+Union de Gestion des Etablissements des Caisses d'Assurance Maladie - Nord Est,9,0.0
+United Arab Emirates University,21,0.4
+United BioPharma,14,0.2916666666666667
+"Unity Biotechnology, Inc.",8,0.1428571428571429
+Universidad Autonoma de San Luis Potosí,35,0.32352941176470584
+Universidad Católica del Maule,15,0.0
+Universidad Europea de Madrid,86,0.5582329317269076
+Universidad Nacional de Colombia,35,0.4242424242424242
+Universidad Nacional de Rosario,8,0.0
+Universidade Federal de Santa Maria,33,0.03125
+Universidade Norte do Paraná,20,0.42105263157894735
+Universitaet Innsbruck,11,0.09999999999999998
+"University Children's Hospital, Zurich",87,0.3373493975903615
+University College Dublin,98,0.543859649122807
+"University Health Network, Toronto",1355,0.5448691072036896
+University Hospital Birmingham,31,0.7666666666666666
+University Hospital Bispebjerg and Frederiksberg,54,0.74
+University Hospital Center of Martinique,76,0.6832504145936982
+University Hospital Plymouth NHS Trust,48,0.5581395348837209
+University Hospital Schleswig-Holstein,145,0.4505813953488372
+University Hospital Southampton NHS Foundation Trust,139,0.48746867167919805
+University Hospital Tuebingen,457,0.6026881045094837
+"University Hospital, Basel, Switzerland",937,0.653211009174312
+"University Hospital, Bonn",143,0.7055555555555555
+"University Hospital, Essen",101,0.33999999999999997
+"University Hospital, Linkoeping",112,0.26299694189602446
+"University Hospital, Rouen",376,0.6984000794991554
+University Hospitals Cleveland Medical Center,271,0.57096018735363
+University Hospitals of Derby and Burton NHS Foundation Trust,32,0.48275862068965514
+University Magna Graecia,71,0.8571428571428572
+University Medical Center Goettingen,46,0.4573643410852713
+University Of Perugia,51,0.3617021276595745
+University of Aarhus,1230,0.5326477832512315
+University of Avignon,8,0.25
+University of Barcelona,78,0.22635135135135134
+University of Bologna,141,0.5810234541577824
+University of Buenos Aires,9,0.0
+"University of California, San Francisco",2004,0.5260452486417673
+University of Chicago,869,0.5822485618450095
+University of Cologne,194,0.5445652173913044
+University of Connecticut,126,0.360655737704918
+University of Exeter,130,0.4598930481283422
+University of Georgia,69,0.36764705882352944
+University of Glasgow,129,0.4148148148148148
+University of Guelph,68,0.5681818181818181
+University of Hartford,12,0.0
+University of Heidelberg Medical Center,19,0.0
+University of Jordan,116,0.7304347826086957
+University of Konstanz,50,0.4166666666666667
+University of Leipzig,141,0.5213178294573644
+University of Luebeck,71,0.5060606060606061
+"University of Maryland, College Park",54,0.6634615384615384
+University of Messina,51,0.26
+University of Michigan Rogel Cancer Center,297,0.5476135175937753
+University of Milan,162,0.4810126582278481
+University of Modena and Reggio Emilia,59,0.21428571428571425
+University of Montana,24,0.6590909090909092
+"University of Nevada, Las Vegas",70,0.12935323383084577
+University of Nove de Julho,233,0.34007585335018964
+University of Pecs,93,0.2588235294117647
+University of Pennsylvania,1576,0.5327786275109616
+University of Pittsburgh,1355,0.5878319047666564
+University of Rochester NCORP Research Base,13,0.25
+University of Roehampton,16,0.3928571428571429
+"University of Social Sciences and Humanities, Warsaw",17,0.2
+University of South Carolina,173,0.37058823529411766
+University of South Wales,9,0.39999999999999997
+University of Southern Denmark,312,0.5345394736842105
+University of Toronto,378,0.5443526170798898
+University of Tulsa,10,0.33333333333333337
+"University of Turin, Italy",192,0.6749034749034748
+University of Utah,917,0.6117883297897473
+University of Versailles,14,0.55
+University of the Philippines,25,0.13043478260869568
+Università degli Studi di Ferrara,62,0.4918032786885246
+Université Libre de Bruxelles,35,0.16666666666666666
+Université de Sherbrooke,274,0.30440251572327043
+Uniwersytecki Szpital Kliniczny w Opolu,10,0.2222222222222222
+Uppsala University,355,0.48549291130893507
+Utrecht Institute for Pharmaceutical Sciences,11,0.6
+VA Connecticut Healthcare System,39,0.4758620689655172
+VA Palo Alto Health Care System,40,0.42105263157894735
+VBI Vaccines Inc.,10,0.0
+Valley Health System,9,0.3571428571428572
+"Vapotherm, Inc.",9,0.38888888888888884
+Vascular Graft Solutions Ltd.,5,0.0
+VectivBio AG,7,0.5
+Vejle Hospital,87,0.5
+Venus Concept,33,0.6111111111111112
+Vernalis (R&D) Ltd,9,0.125
+Versailles Hospital,66,0.71875
+Versartis Inc.,7,0.5
+Vida Recoletas Sevilla,16,0.6181818181818182
+Vietnam National University,15,0.38888888888888884
+ViiV Healthcare,251,0.6060259344012204
+Viome,23,0.2763157894736842
+Virginia Commonwealth University,615,0.5614814814814815
+"Vitaflo International, Ltd",22,0.0
+Walsh University,5,0.0
+Walter Reed Army Medical Center,41,0.3333333333333333
+Washington D.C. Veterans Affairs Medical Center,17,0.4375
+Watson Pharmaceuticals,29,0.1071428571428571
+West Park Healthcare Centre,27,0.5
+West Virginia University,138,0.3783783783783784
+William Beaumont Army Medical Center,9,0.35714285714285715
+Wissenschaftliches Institut Bethanien e.V,24,0.5652173913043479
+Wits Health Consortium (Pty) Ltd,6,0.0
+"Wuhan Children's Hospital, Tongji Medical College, Huazhong University of Science and Technology",170,0.6399999999999999
+Wuhan University,43,0.7051282051282052
+Xemed LLC,6,0.0
+"Xentria, Inc.",6,0.0
+Xiamen University,19,0.38888888888888884
+Xijing Hospital,397,0.5252747252747253
+"Xinhua Hospital, Shanghai Jiao Tong University School of Medicine",204,0.3466003316749585
+"Xoft, Inc.",10,0.23809523809523814
+Yana Najjar,7,0.0
+Yokohama City University Medical Center,16,0.8666666666666667
+Yong Seog Oh,13,0.1
+York Teaching Hospitals NHS Foundation Trust,11,0.2777777777777778
+Youngstown State University,23,0.4545454545454546
+Yuhan Corporation,101,0.6855670103092784
+Yuria-Pharm,6,0.19999999999999996
+Zekai Tahir Burak Women's Health Research and Education Hospital,60,0.35593220338983056
+Zenith Epigenetics,5,0.0
+"ZetrOZ, Inc.",16,0.6
+Zhejiang Provincial People's Hospital,51,0.9217391304347826
+Zhujiang Hospital,175,0.6045918367346939
+"Zogenix International Limited, Inc., a subsidiary of Zogenix, Inc.",5,0.25
+Zoll Medical Corporation,33,0.2642857142857143
+Zuyderland Medisch Centrum,63,0.26229508196721313
+argenx,65,0.5633333333333334
+be Medical,8,0.6666666666666667
+bluebird bio,13,0.0
+howard safran,5,0.0
+"pico-tesla Magnetic Therapies, LLC",8,0.6666666666666666
+sigma-tau i.f.r. S.p.A.,13,0.6

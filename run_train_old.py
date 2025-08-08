@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from src.model import SponsorRiskGRU
 from src.train import fit
-from prepare_sequences import build_sequences
+from src.prepare_sequences import build_sequences
 
 if __name__ == "__main__":
     # 1) Load sequences

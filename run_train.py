@@ -4,7 +4,7 @@ import torch
 from sklearn.model_selection import StratifiedGroupKFold
 from src.model import SponsorRiskGRU
 from src.train import fit
-from prepare_sequences import build_sequences_rich
+from src.prepare_sequences import build_sequences_rich
 
 if __name__ == "__main__":
     # 1) Load richer sequences
@@ -18,13 +18,11 @@ if __name__ == "__main__":
         raise SystemExit("❗ Single-class labels. Check mapping or data.")
 
     # 2) Stratified group split (k-fold -> take first fold as val)
-    sgkf = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
-    groups = np.array(sponsors)
-    split_iter = sgkf.split(np.zeros(len(y_np)), y_np, groups)
-    train_idx, val_idx = next(split_iter)
+    tr_idx = np.load("splits/train_idx.npy")
+    va_idx = np.load("splits/val_idx.npy")
 
-    X_train, y_train = X[train_idx], y[train_idx]
-    X_val,   y_val   = X[val_idx],   y[val_idx]
+    X_train, y_train = X[tr_idx], y[tr_idx]
+    X_val,   y_val   = X[va_idx], y[va_idx]
 
     # 3) Model
     input_dim = X.shape[2]  # now 3 features: [phase_enc, enroll_z, gap_months]

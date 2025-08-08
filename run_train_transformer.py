@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from sklearn.model_selection import StratifiedGroupKFold
 
-from prepare_sequences import build_sequences_rich
+from src.prepare_sequences import build_sequences_rich
 from src.model_transformer import SponsorRiskTransformer
 from src.train import fit
 
@@ -18,9 +18,8 @@ if __name__ == "__main__":
         raise SystemExit("❗ Single-class labels. Check mapping or data.")
 
     # Sponsor-safe stratified split
-    sgkf = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
-    groups = np.array(sponsors)
-    tr_idx, va_idx = next(sgkf.split(np.zeros(len(y_np)), y_np, groups))
+    tr_idx = np.load("splits/train_idx.npy")
+    va_idx = np.load("splits/val_idx.npy")
 
     X_train, y_train = X[tr_idx], y[tr_idx]
     X_val,   y_val   = X[va_idx], y[va_idx]

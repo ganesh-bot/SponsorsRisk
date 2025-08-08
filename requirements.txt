@@ -4,3 +4,5 @@ PyYAML
 scikit-learn
 torch       # CPU version (safe on all machines)
 tqdm
+matplotlib
+shap
