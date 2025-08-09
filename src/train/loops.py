@@ -2,7 +2,7 @@
 from typing import Optional, Any, Dict, Tuple, Iterable
 import torch
 from torch.nn.utils import clip_grad_norm_
-
+from .utils import infer_lengths_from_padding
 
 def _to_device(x, device):
     if torch.is_tensor(x):
@@ -57,28 +57,86 @@ def _extract_xy(batch, device) -> Tuple[Any, torch.Tensor]:
     raise TypeError(f"Unsupported batch type: {type(batch)}")
 
 
-def _forward(model, inputs):
-    """
-    Call model with flexible inputs:
-      - tensor → model(tensor)
-      - dict → try model(**dict), fallback to single-tensor positional if only one tensor
-      - tuple/list → model(*tuple)
-    """
+def _guess_primary_seq_tensor(inputs):
     if torch.is_tensor(inputs):
-        return model(inputs)
+        return inputs
     if isinstance(inputs, dict):
-        try:
-            return model(**inputs)
-        except TypeError:
-            # Fallback: if exactly one tensor value, pass it positionally
-            tensor_inputs = [v for v in inputs.values() if torch.is_tensor(v)]
-            if len(tensor_inputs) == 1:
-                return model(tensor_inputs[0])
-            raise
+        if "X" in inputs and torch.is_tensor(inputs["X"]):
+            return inputs["X"]
+        for v in inputs.values():
+            if torch.is_tensor(v) and v.ndim >= 2:
+                return v
+        return None
     if isinstance(inputs, (list, tuple)):
-        return model(*inputs)
-    # Last resort
-    return model(inputs)
+        for v in inputs:
+            if torch.is_tensor(v) and v.ndim >= 2:
+                return v
+        return None
+    return None
+
+def _ensure_3d(x: torch.Tensor) -> torch.Tensor:
+    # GRU expects (B, L, C); if we got (B, L), add C=1
+    return x.unsqueeze(-1) if x.ndim == 2 else x
+
+def _infer_lengths(seq: torch.Tensor, presence_channel: int = 0, pad_value: float = 0.0) -> torch.Tensor:
+    if seq.ndim == 2:
+        step_is_real = seq != pad_value
+    else:
+        C = seq.size(-1)
+        if presence_channel is not None and presence_channel < C:
+            presence = seq[..., presence_channel]
+            step_is_real = presence != pad_value
+        else:
+            step_is_real = (seq != pad_value).any(dim=-1)
+    lengths = step_is_real.sum(dim=1)
+    # Clamp to at least 1
+    zero_mask = lengths == 0
+    if zero_mask.any():
+        lengths = lengths.clone()
+        lengths[zero_mask] = 1
+    return lengths
+
+def _forward(model, inputs):
+    try:
+        if torch.is_tensor(inputs):
+            inputs = _ensure_3d(inputs)
+            return model(inputs)
+        if isinstance(inputs, dict):
+            # normalize dict['X'] if present
+            if "X" in inputs and torch.is_tensor(inputs["X"]):
+                inputs = dict(inputs)
+                inputs["X"] = _ensure_3d(inputs["X"])
+            return model(**inputs)
+        if isinstance(inputs, (list, tuple)):
+            # if first tensor is 2D, make it 3D
+            inputs = list(inputs)
+            if inputs and torch.is_tensor(inputs[0]):
+                inputs[0] = _ensure_3d(inputs[0])
+            return model(*inputs)
+        return model(inputs)
+    except TypeError as e:
+        # Missing 'lengths' → infer and retry
+        msg = str(e).lower()
+        if "lengths" in msg and "missing" in msg:
+            seq = _guess_primary_seq_tensor(inputs)
+            if seq is None:
+                raise
+            seq = _ensure_3d(seq)
+            lengths = _infer_lengths(seq, presence_channel=0, pad_value=0.0).to(seq.device).long()
+            if torch.is_tensor(inputs):
+                return model(seq, lengths)
+            if isinstance(inputs, dict):
+                inputs2 = dict(inputs)
+                if "X" in inputs2 and torch.is_tensor(inputs2["X"]):
+                    inputs2["X"] = _ensure_3d(inputs2["X"])
+                inputs2.setdefault("lengths", lengths)
+                return model(**inputs2)
+            if isinstance(inputs, (list, tuple)):
+                inputs = list(inputs)
+                if inputs and torch.is_tensor(inputs[0]):
+                    inputs[0] = _ensure_3d(inputs[0])
+                return model(*inputs, lengths)
+        raise
 
 
 @torch.no_grad()
@@ -152,5 +210,34 @@ def fit(
             no_improve += 1
             if no_improve >= early_stopping_patience:
                 break
+    # Build the output we already had
+    out = {"best_state_dict": best_state, "history": history, "best_val_loss": best_val_loss}
 
-    return {"best_state_dict": best_state, "history": history, "best_val_loss": best_val_loss}
+    # Compute final validation metrics once
+    try:
+        import numpy as np
+        from .metrics import compute_auc_pr, best_f1_threshold
+
+        # one more val pass to get logits and labels
+        _, val_logits, val_y = _eval_epoch(model, val_loader, criterion, device)
+        if val_logits.numel() > 0:
+            # your models emit logits; metrics want probabilities
+            y_true = val_y.cpu().numpy()
+            y_prob = torch.sigmoid(val_logits).cpu().numpy()
+
+            val_auc, val_prauc = compute_auc_pr(y_true, y_prob)
+            thr, best_acc, best_f1 = best_f1_threshold(y_true, y_prob)
+
+            out.update({
+                "val_auc": val_auc,
+                "val_prauc": val_prauc,
+                "val_best_thr": thr,
+                "val_best_acc": best_acc,
+                "val_best_f1": best_f1,
+                # backward-compat key some runners used:
+                "best_val_auc": val_auc,
+            })
+    except Exception:
+        pass
+
+    return out
