@@ -1,11 +1,4 @@
 # src/train/__init__.py
-"""
-Backward-compatible train API.
-
-- Exposes fit() that accepts legacy args: lr, weight_decay, scheduler, grad_clip, etc.
-- Silently ignores dataloader-related kwargs like batch_size that older code passed here.
-- Returns (model, stats) to match legacy scripts.
-"""
 from typing import Any, Dict, Optional, Tuple
 import warnings
 import torch
@@ -13,54 +6,62 @@ import torch
 from .loops import fit as _core_fit
 from .utils import infer_lengths_from_padding  # noqa: F401
 
-
-# keys we allow but don't need to forward into the core loop
 _IGNORED_KEYS = {
-    "batch_size",
-    "num_workers",
-    "shuffle",
-    "drop_last",
-    "pin_memory",
-    "prefetch_factor",
-    "persistent_workers",
-    # add others here if your scripts pass them into fit()
+    "batch_size", "num_workers", "shuffle", "drop_last",
+    "pin_memory", "prefetch_factor", "persistent_workers",
 }
 
+def fit(model, train_loader, val_loader, *args, **kwargs) -> Tuple[torch.nn.Module, Dict[str, Any]]:
+    # Map old positionals: epochs, criterion, device
+    epochs = kwargs.pop("epochs", None)
+    criterion = kwargs.get("criterion", None)
+    device = kwargs.get("device", "cpu")
 
-def fit(
-    model,
-    train_loader,
-    val_loader,
-    *,
-    epochs: int = 20,
-    # legacy-friendly args:
-    lr: Optional[float] = None,
-    weight_decay: Optional[float] = None,
-    optimizer: Optional[torch.optim.Optimizer] = None,
-    criterion=None,
-    scheduler: Optional[Any] = None,
-    scheduler_name: Optional[str] = None,
-    scheduler_params: Optional[Dict[str, Any]] = None,
-    early_stopping_patience: int = 5,
-    grad_clip: Optional[float] = None,
-    device: str = "cpu",
-    **legacy_kwargs,  # swallow unknown legacy args (e.g., batch_size)
-) -> Tuple[torch.nn.Module, Dict[str, Any]]:
-    # Drop harmless extras that older runners may pass
-    ignored = set(legacy_kwargs.keys()) & _IGNORED_KEYS
+    pos = list(args)
+    if pos and epochs is None and isinstance(pos[0], int):
+        epochs = pos.pop(0)
+    if pos and criterion is None:
+        criterion = pos.pop(0)
+    if pos and isinstance(pos[0], str):
+        device = pos.pop(0)
+    if pos:
+        warnings.warn(f"Ignoring extra positional args in fit(): {pos}", RuntimeWarning)
+
+    if epochs is None:
+        epochs = 20
+
+    # Swallow harmless dataloader kwargs
+    ignored = set(kwargs.keys()) & _IGNORED_KEYS
+    for k in list(ignored):
+        kwargs.pop(k, None)
     if ignored:
         warnings.warn(f"Ignoring legacy fit() args: {sorted(ignored)}", RuntimeWarning)
-        for k in ignored:
-            legacy_kwargs.pop(k, None)
-    # If anything else unexpected remains, ignore but warn once
-    if legacy_kwargs:
-        warnings.warn(f"Ignoring unknown fit() args: {sorted(legacy_kwargs.keys())}", RuntimeWarning)
 
-    # Build optimizer if not supplied
+    # Pull trainer kwargs
+    lr = kwargs.pop("lr", None)
+    weight_decay = kwargs.pop("weight_decay", None)
+    optimizer = kwargs.pop("optimizer", None)
+    scheduler = kwargs.pop("scheduler", None)
+    scheduler_name = kwargs.pop("scheduler_name", None)
+    scheduler_params = kwargs.pop("scheduler_params", None)
+    early_stopping_patience = kwargs.pop("early_stopping_patience", 5)
+    # Map 'early_stopping' → patience if provided
+    early_stopping = kwargs.pop("early_stopping", None)
+    if isinstance(early_stopping, int):
+        early_stopping_patience = early_stopping
+    # criterion override via kw
+    criterion = kwargs.pop("criterion", criterion)
+
+    if kwargs:
+        warnings.warn(f"Ignoring unknown fit() args: {sorted(kwargs.keys())}", RuntimeWarning)
+
+    # Optimizer
     if optimizer is None:
-        lr_final = lr if lr is not None else 1e-3
-        wd_final = weight_decay if weight_decay is not None else 0.0
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr_final, weight_decay=wd_final)
+        optimizer = torch.optim.Adam(
+            model.parameters(),
+            lr=(lr if lr is not None else 1e-3),
+            weight_decay=(weight_decay if weight_decay is not None else 0.0),
+        )
 
     # Optional scheduler by name
     if scheduler is None and scheduler_name:
@@ -82,7 +83,6 @@ def fit(
                 gamma=p.get("gamma", 0.5),
                 verbose=p.get("verbose", False),
             )
-        # else: leave as None
 
     out = _core_fit(
         model=model,
@@ -93,13 +93,13 @@ def fit(
         criterion=criterion,
         scheduler=scheduler,
         early_stopping_patience=early_stopping_patience,
-        grad_clip=grad_clip,
+        grad_clip=kwargs.pop("grad_clip", None),
         device=device,
     )
 
-    # Load best weights into the provided model
     best = out.get("best_state_dict")
     if best:
         model.load_state_dict(best)
-
     return model, out
+
+__all__ = ["fit", "infer_lengths_from_padding"]
