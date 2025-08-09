@@ -3,14 +3,17 @@ import numpy as np
 import torch
 from sklearn.model_selection import StratifiedGroupKFold
 
-from src.prepare_sequences import build_sequences_rich
+# from src.prepare_sequences import build_sequences_rich
+from src.prepare_sequences import build_sequences_rich_trends
 from src.model_transformer import SponsorRiskTransformer
 from src.train import fit
 
 if __name__ == "__main__":
     # Load richer sequences (phase_enc, enroll_z, gap_months)
-    X, y, lengths, sponsors = build_sequences_rich("data/aact_extracted.csv", max_seq_len=10)
-
+    # X, y, lengths, sponsors = build_sequences_rich("data/aact_extracted.csv", max_seq_len=10)
+    X, y, lengths, sponsors = build_sequences_rich_trends("data/aact_extracted.csv", max_seq_len=10)
+    print("Input dims:", X.shape)  # should show (..., 9)
+    
     y_np = y.numpy()
     uniq, cnts = np.unique(y_np, return_counts=True)
     print("Label distribution:", dict(zip(uniq.tolist(), cnts.tolist())))

@@ -1,0 +1,51 @@
+{
+  "allocation": {
+    "non_randomized": 0,
+    "randomized": 1,
+    "unknown": 2
+  },
+  "masking": {
+    "double": 0,
+    "none": 1,
+    "quadruple": 2,
+    "single": 3,
+    "triple": 4,
+    "unknown": 5
+  },
+  "primary_purpose": {
+    "basic_science": 0,
+    "device_feasibility": 1,
+    "diagnostic": 2,
+    "ect": 3,
+    "health_services_research": 4,
+    "other": 5,
+    "prevention": 6,
+    "screening": 7,
+    "supportive_care": 8,
+    "treatment": 9,
+    "unknown": 10
+  },
+  "intv_type": {
+    "['behavioral'": 0,
+    "['behavioral']": 1,
+    "['biological'": 2,
+    "['biological']": 3,
+    "['combination_product'": 4,
+    "['combination_product']": 5,
+    "['device'": 6,
+    "['device']": 7,
+    "['diagnostic_test'": 8,
+    "['diagnostic_test']": 9,
+    "['dietary_supplement'": 10,
+    "['dietary_supplement']": 11,
+    "['drug'": 12,
+    "['drug']": 13,
+    "['genetic'": 14,
+    "['genetic']": 15,
+    "['other'": 16,
+    "['other']": 17,
+    "['procedure'": 18,
+    "['procedure']": 19,
+    "['radiation']": 20
+  }
+}

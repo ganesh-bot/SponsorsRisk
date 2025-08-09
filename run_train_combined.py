@@ -4,15 +4,17 @@ import torch
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
-from src.prepare_sequences import build_sequences_with_cats
+#from src.prepare_sequences import build_sequences_with_cats
+from src.prepare_sequences import build_sequences_with_cats_trends
 from src.model_combined import CombinedGRU
 from src.train import fit
 
 if __name__ == "__main__":
-    X_num, X_cat, y, lengths, sponsors, vocab_sizes = build_sequences_with_cats(
+    X_num, X_cat, y, lengths, sponsors, vocab_sizes = build_sequences_with_cats_trends(
         "data/aact_extracted.csv",
         max_seq_len=10
     )
+    print("Numeric dims:", X_num.shape, "Cat dims:", X_cat.shape)
 
     y_np = y.numpy()
     uniq, cnts = np.unique(y_np, return_counts=True)

@@ -4,11 +4,14 @@ import torch
 from sklearn.model_selection import StratifiedGroupKFold
 from src.model import SponsorRiskGRU
 from src.train import fit
-from src.prepare_sequences import build_sequences_rich
+#from src.prepare_sequences import build_sequences_rich
+from src.prepare_sequences import build_sequences_rich_trends
 
 if __name__ == "__main__":
     # 1) Load richer sequences
-    X, y, lengths, sponsors = build_sequences_rich("data/aact_extracted.csv", max_seq_len=10)
+    # X, y, lengths, sponsors = build_sequences_rich("data/aact_extracted.csv", max_seq_len=10)
+    X, y, lengths, sponsors = build_sequences_rich_trends("data/aact_extracted.csv", max_seq_len=10)
+    print("Input dims:", X.shape)  # should show (..., 9)
 
     # basic label check
     y_np = y.numpy()
