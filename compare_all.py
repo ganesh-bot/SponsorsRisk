@@ -6,10 +6,6 @@ import torch
 import torch.nn.functional as F
 
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (
-    accuracy_score, f1_score, roc_auc_score, average_precision_score,
-    precision_recall_curve
-)
 from sklearn.isotonic import IsotonicRegression
 
 from src.prepare_sequences import (
@@ -22,6 +18,7 @@ from src.model import SponsorRiskGRU
 from src.model_transformer import SponsorRiskTransformer
 from src.model_combined import CombinedGRU
 from src.train import infer_lengths_from_padding
+from src.train.metrics import compute_auc_pr, best_f1_threshold
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 OUTDIR = "results"
@@ -30,28 +27,6 @@ os.makedirs(OUTDIR, exist_ok=True)
 # ============================================================
 # Utilities
 # ============================================================
-
-def evaluate_all(y_true, y_prob, thresh=0.5):
-    y_pred = (y_prob >= thresh).astype(int)
-    acc = accuracy_score(y_true, y_pred)
-    f1  = f1_score(y_true, y_pred, zero_division=0)
-    try:
-        auc = roc_auc_score(y_true, y_prob)
-    except ValueError:
-        auc = float("nan")
-    try:
-        prauc = average_precision_score(y_true, y_prob)
-    except ValueError:
-        prauc = float("nan")
-    return acc, f1, auc, prauc
-
-def best_f1_threshold(y_true, y_prob):
-    p, r, t = precision_recall_curve(y_true, y_prob)
-    # thresholds len = len(p) - 1; align by prepending 0
-    t = np.r_[0.0, t]
-    f1 = 2 * (p * r) / np.maximum(p + r, 1e-9)
-    k = np.nanargmax(f1)
-    return float(t[k]), float(f1[k])
 
 def calibrate_isotonic(y_tr, p_tr, p_va):
     ir = IsotonicRegression(out_of_bounds="clip")
@@ -131,7 +106,11 @@ def train_seq_get_probs(model, Xtr, ytr, Xva, yva, epochs=30, lr=1e-3, batch=256
         val_logloss = -np.mean(y_true*np.log(p_va+eps) + (1-y_true)*np.log(1-p_va+eps))
         sched.step(val_logloss)
 
-        _, _, auc, _ = evaluate_all(y_true, p_va)
+        # track best by AUC
+        try:
+            auc, _ = compute_auc_pr(y_true, p_va)
+        except Exception:
+            auc = float("nan")
         if not np.isnan(auc) and auc > best_auc:
             best_auc, best, pat = auc, {k:v.cpu().clone() for k,v in model.state_dict().items()}, 0
         else:
@@ -139,7 +118,9 @@ def train_seq_get_probs(model, Xtr, ytr, Xva, yva, epochs=30, lr=1e-3, batch=256
             if pat >= PATIENCE:
                 break
 
-    if best is not None: model.load_state_dict(best)
+    if best is not None:
+        model.load_state_dict(best)
+
     # probs for calibration & eval
     p_tr = _final_probs_seq(model, Xtr)
     p_va = _final_probs_seq(model, Xva)
@@ -191,7 +172,10 @@ def train_eval_combined_get_probs(Xn_tr, Xc_tr, y_tr, L_tr,
         val_logloss = -np.mean(y_true*np.log(p_va+eps) + (1-y_true)*np.log(1-p_va+eps))
         sched.step(val_logloss)
 
-        _, _, auc, _ = evaluate_all(y_true, p_va)
+        try:
+            auc, _ = compute_auc_pr(y_true, p_va)
+        except Exception:
+            auc = float("nan")
         if not np.isnan(auc) and auc > best_auc:
             best_auc, best, pat = auc, {k:v.cpu().clone() for k,v in model.state_dict().items()}, 0
         else:
@@ -199,7 +183,8 @@ def train_eval_combined_get_probs(Xn_tr, Xc_tr, y_tr, L_tr,
             if pat >= PATIENCE:
                 break
 
-    if best is not None: model.load_state_dict(best)
+    if best is not None:
+        model.load_state_dict(best)
 
     def final_probs(Xn, Xc, L, batch=512):
         model.eval(); out = []
@@ -236,19 +221,20 @@ if __name__ == "__main__":
     X3, y3, groups3 = build_baseline_samples(df, max_hist=10, use_categoricals=False, with_trends=True, verbose=False)
     X3tr, X3va = X3.iloc[tr_idx], X3.iloc[va_idx]
     y3tr, y3va = y3[tr_idx],    y3[va_idx]
+
     lr3 = LogisticRegression(max_iter=500, class_weight="balanced")
     lr3.fit(X3tr, y3tr)
     p3_tr = lr3.predict_proba(X3tr)[:, 1]
     p3_va = lr3.predict_proba(X3va)[:, 1]
-    acc, f1, auc, pr = evaluate_all(y3va, p3_va)
-    metrics.append({"model":"Baseline-3F+trends","acc":acc,"f1":f1,"auc":auc,"prauc":pr})
+
+    auc, pr = compute_auc_pr(y3va, p3_va)
+    thr, acc_thr, f1_thr = best_f1_threshold(y3va, p3_va)
+    metrics.append({"model":"Baseline-3F+trends","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
     p3_va_iso = calibrate_isotonic(y3tr, p3_tr, p3_va)
-    acc, f1, auc, pr = evaluate_all(y3va, p3_va_iso)
-    t_star, f1_star = best_f1_threshold(y3va, p3_va_iso)
-    acc_thr, f1_thr, _, _ = evaluate_all(y3va, (p3_va_iso >= t_star).astype(float))
-    metrics_cal.append({"model":"Baseline-3F+trends (iso)","acc":acc,"f1":f1,"auc":auc,"prauc":pr,
-                        "thr":t_star,"acc_thr":acc_thr,"f1_thr":f1_thr})
+    auc, pr = compute_auc_pr(y3va, p3_va_iso)
+    thr, acc_thr, f1_thr = best_f1_threshold(y3va, p3_va_iso)
+    metrics_cal.append({"model":"Baseline-3F+trends (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
     sponsors3 = groups3
     st_va = np.array([st_map.get(s, "unknown") for s in sponsors3[va_idx]])
@@ -256,13 +242,13 @@ if __name__ == "__main__":
     for st in np.unique(st_va):
         m = st_va == st
         if m.sum() >= 50:
-            _, _, auc_s, pr_s = evaluate_all(y3va[m], p3_va_iso[m])
+            auc_s, pr_s = compute_auc_pr(y3va[m], p3_va_iso[m])
             slices_st.append({"model":"Baseline-3F+trends","sponsor_type":st,"n":int(m.sum()),
                               "auc":auc_s,"prauc":pr_s})
     for b in ["1-2","3-5","6-10"]:
         m = histlen_va == b
         if m.sum() >= 50:
-            _, _, auc_s, pr_s = evaluate_all(y3va[m], p3_va_iso[m])
+            auc_s, pr_s = compute_auc_pr(y3va[m], p3_va_iso[m])
             slices_len.append({"model":"Baseline-3F+trends","bucket":b,"n":int(m.sum()),
                                "auc":auc_s,"prauc":pr_s})
 
@@ -270,19 +256,20 @@ if __name__ == "__main__":
     X7, y7, groups7 = build_baseline_samples(df, max_hist=10, use_categoricals=True, with_trends=True, verbose=False)
     X7tr, X7va = X7.iloc[tr_idx], X7.iloc[va_idx]
     y7tr, y7va = y7[tr_idx],    y7[va_idx]
+
     lr7 = LogisticRegression(max_iter=500, class_weight="balanced")
     lr7.fit(X7tr, y7tr)
     p7_tr = lr7.predict_proba(X7tr)[:, 1]
     p7_va = lr7.predict_proba(X7va)[:, 1]
-    acc, f1, auc, pr = evaluate_all(y7va, p7_va)
-    metrics.append({"model":"Baseline-7F+trends","acc":acc,"f1":f1,"auc":auc,"prauc":pr})
+
+    auc, pr = compute_auc_pr(y7va, p7_va)
+    thr, acc_thr, f1_thr = best_f1_threshold(y7va, p7_va)
+    metrics.append({"model":"Baseline-7F+trends","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
     p7_va_iso = calibrate_isotonic(y7tr, p7_tr, p7_va)
-    acc, f1, auc, pr = evaluate_all(y7va, p7_va_iso)
-    t_star, f1_star = best_f1_threshold(y7va, p7_va_iso)
-    acc_thr, f1_thr, _, _ = evaluate_all(y7va, (p7_va_iso >= t_star).astype(float))
-    metrics_cal.append({"model":"Baseline-7F+trends (iso)","acc":acc,"f1":f1,"auc":auc,"prauc":pr,
-                        "thr":t_star,"acc_thr":acc_thr,"f1_thr":f1_thr})
+    auc, pr = compute_auc_pr(y7va, p7_va_iso)
+    thr, acc_thr, f1_thr = best_f1_threshold(y7va, p7_va_iso)
+    metrics_cal.append({"model":"Baseline-7F+trends (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
     sponsors7 = groups7
     st_va = np.array([st_map.get(s, "unknown") for s in sponsors7[va_idx]])
@@ -290,13 +277,13 @@ if __name__ == "__main__":
     for st in np.unique(st_va):
         m = st_va == st
         if m.sum() >= 50:
-            _, _, auc_s, pr_s = evaluate_all(y7va[m], p7_va_iso[m])
+            auc_s, pr_s = compute_auc_pr(y7va[m], p7_va_iso[m])
             slices_st.append({"model":"Baseline-7F+trends","sponsor_type":st,"n":int(m.sum()),
                               "auc":auc_s,"prauc":pr_s})
     for b in ["1-2","3-5","6-10"]:
         m = histlen_va == b
         if m.sum() >= 50:
-            _, _, auc_s, pr_s = evaluate_all(y7va[m], p7_va_iso[m])
+            auc_s, pr_s = compute_auc_pr(y7va[m], p7_va_iso[m])
             slices_len.append({"model":"Baseline-7F+trends","bucket":b,"n":int(m.sum()),
                                "auc":auc_s,"prauc":pr_s})
 
@@ -304,59 +291,60 @@ if __name__ == "__main__":
     X, y, L, sponsors = build_sequences_rich_trends("data/aact_extracted.csv", max_seq_len=10, verbose=False)
     Xtr, Xva = X[tr_idx], X[va_idx]; ytr, yva = y[tr_idx], y[va_idx]
     pos_w = torch.tensor((ytr==0).sum().item()/max((ytr==1).sum().item(),1), dtype=torch.float32) * 1.2
+
     p_tr, p_va = train_eval_gru_get_probs(Xtr, ytr, Xva, yva, epochs=30, lr=1e-3, batch=256, pos_weight=pos_w)
-    acc, f1, auc, pr = evaluate_all(yva.numpy(), p_va)
-    metrics.append({"model":"GRU-9ch","acc":acc,"f1":f1,"auc":auc,"prauc":pr})
+    auc, pr = compute_auc_pr(yva.numpy(), p_va)
+    thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va)
+    metrics.append({"model":"GRU-9ch","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
     p_va_iso = calibrate_isotonic(ytr.numpy(), p_tr, p_va)
-    acc, f1, auc, pr = evaluate_all(yva.numpy(), p_va_iso)
-    t_star, f1_star = best_f1_threshold(yva.numpy(), p_va_iso)
-    acc_thr, f1_thr, _, _ = evaluate_all(yva.numpy(), (p_va_iso >= t_star).astype(float))
-    metrics_cal.append({"model":"GRU-9ch (iso)","acc":acc,"f1":f1,"auc":auc,"prauc":pr,
-                        "thr":t_star,"acc_thr":acc_thr,"f1_thr":f1_thr})
+    auc, pr = compute_auc_pr(yva.numpy(), p_va_iso)
+    thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va_iso)
+    metrics_cal.append({"model":"GRU-9ch (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
     st_va = np.array([st_map.get(s, "unknown") for s in np.array(sponsors)[va_idx]])
     len_va = bucket_histlen(L[va_idx].numpy())
     for st in np.unique(st_va):
         m = st_va == st
         if m.sum() >= 50:
-            _, _, auc_s, pr_s = evaluate_all(yva.numpy()[m], p_va_iso[m])
+            auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
             slices_st.append({"model":"GRU-9ch","sponsor_type":st,"n":int(m.sum()),
                               "auc":auc_s,"prauc":pr_s})
     for b in ["1-2","3-5","6-10"]:
         m = len_va == b
         if m.sum() >= 50:
-            _, _, auc_s, pr_s = evaluate_all(yva.numpy()[m], p_va_iso[m])
+            auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
             slices_len.append({"model":"GRU-9ch","bucket":b,"n":int(m.sum()),
                                "auc":auc_s,"prauc":pr_s})
 
     # ---------------- Transformer (9ch) ----------------
     p_tr, p_va = train_eval_tx_get_probs(Xtr, ytr, Xva, yva, epochs=30, lr=1e-3, batch=256, pos_weight=pos_w)
-    acc, f1, auc, pr = evaluate_all(yva.numpy(), p_va)
-    metrics.append({"model":"Transformer-9ch","acc":acc,"f1":f1,"auc":auc,"prauc":pr})
+    auc, pr = compute_auc_pr(yva.numpy(), p_va)
+    thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va)
+    metrics.append({"model":"Transformer-9ch","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
     p_va_iso = calibrate_isotonic(ytr.numpy(), p_tr, p_va)
-    acc, f1, auc, pr = evaluate_all(yva.numpy(), p_va_iso)
-    t_star, f1_star = best_f1_threshold(yva.numpy(), p_va_iso)
-    acc_thr, f1_thr, _, _ = evaluate_all(yva.numpy(), (p_va_iso >= t_star).astype(float))
-    metrics_cal.append({"model":"Transformer-9ch (iso)","acc":acc,"f1":f1,"auc":auc,"prauc":pr,
-                        "thr":t_star,"acc_thr":acc_thr,"f1_thr":f1_thr})
+    auc, pr = compute_auc_pr(yva.numpy(), p_va_iso)
+    thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va_iso)
+    metrics_cal.append({"model":"Transformer-9ch (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
     for st in np.unique(st_va):
         m = st_va == st
         if m.sum() >= 50:
-            _, _, auc_s, pr_s = evaluate_all(yva.numpy()[m], p_va_iso[m])
+            auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
             slices_st.append({"model":"Transformer-9ch","sponsor_type":st,"n":int(m.sum()),
                               "auc":auc_s,"prauc":pr_s})
     for b in ["1-2","3-5","6-10"]:
         m = len_va == b
         if m.sum() >= 50:
-            _, _, auc_s, pr_s = evaluate_all(yva.numpy()[m], p_va_iso[m])
+            auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
             slices_len.append({"model":"Transformer-9ch","bucket":b,"n":int(m.sum()),
                                "auc":auc_s,"prauc":pr_s})
 
     # ---------------- Combined (9+4) ----------------
-    Xn, Xc, yC, Lc, sponsorsC, vocab_sizes = build_sequences_with_cats_trends("data/aact_extracted.csv", max_seq_len=10, verbose=False)
+    Xn, Xc, yC, Lc, sponsorsC, vocab_sizes, *extra = build_sequences_with_cats_trends(
+        "data/aact_extracted.csv", max_seq_len=10, verbose=False
+    )
     Xn_tr, Xn_va = Xn[tr_idx], Xn[va_idx]
     Xc_tr, Xc_va = Xc[tr_idx], Xc[va_idx]
     yC_tr, yC_va = yC[tr_idx], yC[va_idx]
@@ -365,36 +353,48 @@ if __name__ == "__main__":
 
     p_tr, p_va = train_eval_combined_get_probs(Xn_tr, Xc_tr, yC_tr, L_tr, Xn_va, Xc_va, yC_va, L_va,
                                                vocab_sizes, epochs=30, lr=1e-3, batch=256, pos_weight=pos_w2)
-    acc, f1, auc, pr = evaluate_all(yC_va.numpy(), p_va)
-    metrics.append({"model":"Combined-9+4","acc":acc,"f1":f1,"auc":auc,"prauc":pr})
+    auc, pr = compute_auc_pr(yC_va.numpy(), p_va)
+    thr, acc_thr, f1_thr = best_f1_threshold(yC_va.numpy(), p_va)
+    metrics.append({"model":"Combined-9+4","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
     p_va_iso = calibrate_isotonic(yC_tr.numpy(), p_tr, p_va)
-    acc, f1, auc, pr = evaluate_all(yC_va.numpy(), p_va_iso)
-    t_star, f1_star = best_f1_threshold(yC_va.numpy(), p_va_iso)
-    acc_thr, f1_thr, _, _ = evaluate_all(yC_va.numpy(), (p_va_iso >= t_star).astype(float))
-    metrics_cal.append({"model":"Combined-9+4 (iso)","acc":acc,"f1":f1,"auc":auc,"prauc":pr,
-                        "thr":t_star,"acc_thr":acc_thr,"f1_thr":f1_thr})
+    auc, pr = compute_auc_pr(yC_va.numpy(), p_va_iso)
+    thr, acc_thr, f1_thr = best_f1_threshold(yC_va.numpy(), p_va_iso)
+    metrics_cal.append({"model":"Combined-9+4 (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
     st_vaC = np.array([st_map.get(s, "unknown") for s in np.array(sponsorsC)[va_idx]])
     len_vaC = bucket_histlen(Lc[va_idx].numpy())
     for st in np.unique(st_vaC):
         m = st_vaC == st
         if m.sum() >= 50:
-            _, _, auc_s, pr_s = evaluate_all(yC_va.numpy()[m], p_va_iso[m])
+            auc_s, pr_s = compute_auc_pr(yC_va.numpy()[m], p_va_iso[m])
             slices_st.append({"model":"Combined-9+4","sponsor_type":st,"n":int(m.sum()),
                               "auc":auc_s,"prauc":pr_s})
     for b in ["1-2","3-5","6-10"]:
         m = len_vaC == b
         if m.sum() >= 50:
-            _, _, auc_s, pr_s = evaluate_all(yC_va.numpy()[m], p_va_iso[m])
+            auc_s, pr_s = compute_auc_pr(yC_va.numpy()[m], p_va_iso[m])
             slices_len.append({"model":"Combined-9+4","bucket":b,"n":int(m.sum()),
                                "auc":auc_s,"prauc":pr_s})
 
     # ---------------- Save everything ----------------
-    df_overall = pd.DataFrame(metrics).sort_values("auc", ascending=False)
-    df_overall_cal = pd.DataFrame(metrics_cal).sort_values("auc", ascending=False)
-    df_st = pd.DataFrame(slices_st).sort_values(["model","sponsor_type"])
-    df_len = pd.DataFrame(slices_len).sort_values(["model","bucket"])
+    cols = ["model", "val_auc", "val_prauc", "val_best_thr", "val_best_f1"]
+    df_overall = pd.DataFrame(metrics)
+    if not df_overall.empty:
+        for c in cols:
+            if c not in df_overall.columns:
+                df_overall[c] = None
+        df_overall = df_overall[cols].sort_values("val_auc", ascending=False)
+
+    df_overall_cal = pd.DataFrame(metrics_cal)
+    if not df_overall_cal.empty:
+        for c in cols:
+            if c not in df_overall_cal.columns:
+                df_overall_cal[c] = None
+        df_overall_cal = df_overall_cal[cols].sort_values("val_auc", ascending=False)
+
+    df_st = pd.DataFrame(slices_st).sort_values(["model","sponsor_type"]) if slices_st else pd.DataFrame(columns=["model","sponsor_type","n","auc","prauc"])
+    df_len = pd.DataFrame(slices_len).sort_values(["model","bucket"]) if slices_len else pd.DataFrame(columns=["model","bucket","n","auc","prauc"])
 
     print("\n=== OVERALL (uncalibrated) ===")
     print(df_overall.to_string(index=False))
