@@ -1,9 +1,6 @@
-model,source
-Baseline7F_trends_uncal,val_probs
-Baseline7F_trends_iso,val_probs_iso
-GRU9_uncal,val_probs
-GRU9_iso,val_probs_iso
-Transformer9_uncal,val_probs
-Transformer9_iso,val_probs_iso
-Combined9p4_uncal,val_probs
-Combined9p4_iso,val_probs_iso
+split,model,roc_path,pr_path,reliability_path
+val,Baseline-3F+trends,results/plots\roc_val_Baseline-3F+trends.png,results/plots\pr_val_Baseline-3F+trends.png,results/plots\reliability_val_Baseline-3F+trends.png
+val,Baseline-7F+trends,results/plots\roc_val_Baseline-7F+trends.png,results/plots\pr_val_Baseline-7F+trends.png,results/plots\reliability_val_Baseline-7F+trends.png
+val,GRU-9ch,results/plots\roc_val_GRU-9ch.png,results/plots\pr_val_GRU-9ch.png,results/plots\reliability_val_GRU-9ch.png
+val,Transformer-9ch,results/plots\roc_val_Transformer-9ch.png,results/plots\pr_val_Transformer-9ch.png,results/plots\reliability_val_Transformer-9ch.png
+val,Combined-9+4,results/plots\roc_val_Combined-9+4.png,results/plots\pr_val_Combined-9+4.png,results/plots\reliability_val_Combined-9+4.png

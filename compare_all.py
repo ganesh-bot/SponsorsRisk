@@ -1,5 +1,5 @@
 # compare_all.py
-import os, json, re
+import os, json, re, argparse
 import numpy as np
 import pandas as pd
 import torch
@@ -10,7 +10,7 @@ from sklearn.isotonic import IsotonicRegression
 
 from src.prepare_sequences import (
     build_sequences_rich_trends,          # -> X (N,T,9), y, L, sponsors
-    build_sequences_with_cats_trends,     # -> X_num (N,T,9), X_cat (N,T,4), y, L, sponsors, vocab_sizes
+    build_sequences_with_cats_trends,     # -> X_num (N,T,9), X_cat (N,T,4), y, L, sponsors, vocab_sizes, ...
 )
 from run_baseline import build_baseline_samples  # robust baseline builder w/ trend features
 
@@ -20,7 +20,19 @@ from src.model_combined import CombinedGRU
 from src.train import infer_lengths_from_padding
 from src.train.metrics import compute_auc_pr, best_f1_threshold
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+# ---------------- Args / device ----------------
+parser = argparse.ArgumentParser()
+parser.add_argument("--epochs", type=int, default=30)
+parser.add_argument("--batch", type=int, default=256)
+parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"])
+parser.add_argument("--no-calibration", action="store_true")
+args = parser.parse_args()
+
+DEVICE = torch.device(
+    "cuda" if (args.device == "auto" and torch.cuda.is_available()) else
+    ("cpu" if args.device == "auto" else args.device)
+)
+
 OUTDIR = "results"
 os.makedirs(OUTDIR, exist_ok=True)
 
@@ -57,6 +69,14 @@ def bucket_histlen(arr_like):
     out[(arr >= 3) & (arr <= 5)] = "3-5"
     out[arr >= 6] = "6-10"
     return out
+
+# ---- Save raw probabilities for later plots/calibration (S2) ----
+PROB_DIR = os.path.join(OUTDIR, "probs")
+os.makedirs(PROB_DIR, exist_ok=True)
+
+def _save_probs(name: str, split: str, probs: np.ndarray, labels: np.ndarray):
+    np.save(os.path.join(PROB_DIR, f"{name}_{split}_probs.npy"), probs)
+    np.save(os.path.join(PROB_DIR, f"{name}_{split}_labels.npy"), labels)
 
 # ============================================================
 # Trainers (with scheduler, patience, grad clipping)
@@ -226,34 +246,39 @@ if __name__ == "__main__":
     lr3.fit(X3tr, y3tr)
     p3_tr = lr3.predict_proba(X3tr)[:, 1]
     p3_va = lr3.predict_proba(X3va)[:, 1]
+    _save_probs("baseline3", "train", p3_tr, y3tr)
+    _save_probs("baseline3", "val",   p3_va, y3va)
 
     auc, pr = compute_auc_pr(y3va, p3_va)
     thr, acc_thr, f1_thr = best_f1_threshold(y3va, p3_va)
     metrics.append({"model":"Baseline-3F+trends","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
-    p3_va_iso = calibrate_isotonic(y3tr, p3_tr, p3_va)
-    auc, pr = compute_auc_pr(y3va, p3_va_iso)
-    thr, acc_thr, f1_thr = best_f1_threshold(y3va, p3_va_iso)
-    metrics_cal.append({"model":"Baseline-3F+trends (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
+    if not args.no_calibration:
+        p3_va_iso = calibrate_isotonic(y3tr, p3_tr, p3_va)
+        auc, pr = compute_auc_pr(y3va, p3_va_iso)
+        thr, acc_thr, f1_thr = best_f1_threshold(y3va, p3_va_iso)
+        metrics_cal.append({"model":"Baseline-3F+trends (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
     sponsors3 = groups3
-    st_va = np.array([st_map.get(s, "unknown") for s in sponsors3[va_idx]])
     histlen_va = bucket_histlen(X3va["hist_len"].values)
-    for st in np.unique(st_va):
-        m = st_va == st
-        if m.sum() >= 50:
-            auc_s, pr_s = compute_auc_pr(y3va[m], p3_va_iso[m])
-            slices_st.append({"model":"Baseline-3F+trends","sponsor_type":st,"n":int(m.sum()),
-                              "auc":auc_s,"prauc":pr_s})
-    for b in ["1-2","3-5","6-10"]:
-        m = histlen_va == b
-        if m.sum() >= 50:
-            auc_s, pr_s = compute_auc_pr(y3va[m], p3_va_iso[m])
-            slices_len.append({"model":"Baseline-3F+trends","bucket":b,"n":int(m.sum()),
-                               "auc":auc_s,"prauc":pr_s})
+    if not args.no_calibration:
+        st_va = np.array([st_map.get(s, "unknown") for s in sponsors3[va_idx]])
+        for st in np.unique(st_va):
+            m = st_va == st
+            if m.sum() >= 50:
+                auc_s, pr_s = compute_auc_pr(y3va[m], p3_va_iso[m])
+                slices_st.append({"model":"Baseline-3F+trends","sponsor_type":st,"n":int(m.sum()),
+                                  "auc":auc_s,"prauc":pr_s})
+        for b in ["1-2","3-5","6-10"]:
+            m = histlen_va == b
+            if m.sum() >= 50:
+                auc_s, pr_s = compute_auc_pr(y3va[m], p3_va_iso[m])
+                slices_len.append({"model":"Baseline-3F+trends","bucket":b,"n":int(m.sum()),
+                                   "auc":auc_s,"prauc":pr_s})
 
     # ---------------- Baseline-7F + trends ----------------
     X7, y7, groups7 = build_baseline_samples(df, max_hist=10, use_categoricals=True, with_trends=True, verbose=False)
+    sponsors7 = groups7
     X7tr, X7va = X7.iloc[tr_idx], X7.iloc[va_idx]
     y7tr, y7va = y7[tr_idx],    y7[va_idx]
 
@@ -261,124 +286,141 @@ if __name__ == "__main__":
     lr7.fit(X7tr, y7tr)
     p7_tr = lr7.predict_proba(X7tr)[:, 1]
     p7_va = lr7.predict_proba(X7va)[:, 1]
+    _save_probs("baseline7", "train", p7_tr, y7tr)
+    _save_probs("baseline7", "val",   p7_va, y7va)
 
     auc, pr = compute_auc_pr(y7va, p7_va)
     thr, acc_thr, f1_thr = best_f1_threshold(y7va, p7_va)
     metrics.append({"model":"Baseline-7F+trends","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
-    p7_va_iso = calibrate_isotonic(y7tr, p7_tr, p7_va)
-    auc, pr = compute_auc_pr(y7va, p7_va_iso)
-    thr, acc_thr, f1_thr = best_f1_threshold(y7va, p7_va_iso)
-    metrics_cal.append({"model":"Baseline-7F+trends (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
+    if not args.no_calibration:
+        p7_va_iso = calibrate_isotonic(y7tr, p7_tr, p7_va)
+        auc, pr = compute_auc_pr(y7va, p7_va_iso)
+        thr, acc_thr, f1_thr = best_f1_threshold(y7va, p7_va_iso)
+        metrics_cal.append({"model":"Baseline-7F+trends (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
-    sponsors7 = groups7
-    st_va = np.array([st_map.get(s, "unknown") for s in sponsors7[va_idx]])
-    histlen_va = bucket_histlen(X7va["hist_len"].values)
-    for st in np.unique(st_va):
-        m = st_va == st
-        if m.sum() >= 50:
-            auc_s, pr_s = compute_auc_pr(y7va[m], p7_va_iso[m])
-            slices_st.append({"model":"Baseline-7F+trends","sponsor_type":st,"n":int(m.sum()),
-                              "auc":auc_s,"prauc":pr_s})
-    for b in ["1-2","3-5","6-10"]:
-        m = histlen_va == b
-        if m.sum() >= 50:
-            auc_s, pr_s = compute_auc_pr(y7va[m], p7_va_iso[m])
-            slices_len.append({"model":"Baseline-7F+trends","bucket":b,"n":int(m.sum()),
-                               "auc":auc_s,"prauc":pr_s})
+        st_va = np.array([st_map.get(s, "unknown") for s in sponsors7[va_idx]])
+        for st in np.unique(st_va):
+            m = st_va == st
+            if m.sum() >= 50:
+                auc_s, pr_s = compute_auc_pr(y7va[m], p7_va_iso[m])
+                slices_st.append({"model":"Baseline-7F+trends","sponsor_type":st,"n":int(m.sum()),
+                                  "auc":auc_s,"prauc":pr_s})
+        for b in ["1-2","3-5","6-10"]:
+            m = histlen_va == b
+            if m.sum() >= 50:
+                auc_s, pr_s = compute_auc_pr(y7va[m], p7_va_iso[m])
+                slices_len.append({"model":"Baseline-7F+trends","bucket":b,"n":int(m.sum()),
+                                   "auc":auc_s,"prauc":pr_s})
 
     # ---------------- GRU (9ch) ----------------
     X, y, L, sponsors = build_sequences_rich_trends("data/aact_extracted.csv", max_seq_len=10, verbose=False)
     Xtr, Xva = X[tr_idx], X[va_idx]; ytr, yva = y[tr_idx], y[va_idx]
     pos_w = torch.tensor((ytr==0).sum().item()/max((ytr==1).sum().item(),1), dtype=torch.float32) * 1.2
 
-    p_tr, p_va = train_eval_gru_get_probs(Xtr, ytr, Xva, yva, epochs=30, lr=1e-3, batch=256, pos_weight=pos_w)
+    p_tr, p_va = train_eval_gru_get_probs(Xtr, ytr, Xva, yva, epochs=args.epochs, lr=1e-3, batch=args.batch, pos_weight=pos_w)
+    _save_probs("gru9", "train", p_tr, ytr.numpy())
+    _save_probs("gru9", "val",   p_va, yva.numpy())
+
     auc, pr = compute_auc_pr(yva.numpy(), p_va)
     thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va)
     metrics.append({"model":"GRU-9ch","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
-    p_va_iso = calibrate_isotonic(ytr.numpy(), p_tr, p_va)
-    auc, pr = compute_auc_pr(yva.numpy(), p_va_iso)
-    thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va_iso)
-    metrics_cal.append({"model":"GRU-9ch (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
+    if not args.no_calibration:
+        p_va_iso = calibrate_isotonic(ytr.numpy(), p_tr, p_va)
+        auc, pr = compute_auc_pr(yva.numpy(), p_va_iso)
+        thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va_iso)
+        metrics_cal.append({"model":"GRU-9ch (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
-    st_va = np.array([st_map.get(s, "unknown") for s in np.array(sponsors)[va_idx]])
-    len_va = bucket_histlen(L[va_idx].numpy())
-    for st in np.unique(st_va):
-        m = st_va == st
-        if m.sum() >= 50:
-            auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
-            slices_st.append({"model":"GRU-9ch","sponsor_type":st,"n":int(m.sum()),
-                              "auc":auc_s,"prauc":pr_s})
-    for b in ["1-2","3-5","6-10"]:
-        m = len_va == b
-        if m.sum() >= 50:
-            auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
-            slices_len.append({"model":"GRU-9ch","bucket":b,"n":int(m.sum()),
-                               "auc":auc_s,"prauc":pr_s})
+        st_va = np.array([st_map.get(s, "unknown") for s in np.array(sponsors)[va_idx]])
+        len_va = bucket_histlen(L[va_idx].numpy())
+        for st in np.unique(st_va):
+            m = st_va == st
+            if m.sum() >= 50:
+                auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
+                slices_st.append({"model":"GRU-9ch","sponsor_type":st,"n":int(m.sum()),
+                                  "auc":auc_s,"prauc":pr_s})
+        for b in ["1-2","3-5","6-10"]:
+            m = len_va == b
+            if m.sum() >= 50:
+                auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
+                slices_len.append({"model":"GRU-9ch","bucket":b,"n":int(m.sum()),
+                                   "auc":auc_s,"prauc":pr_s})
 
     # ---------------- Transformer (9ch) ----------------
-    p_tr, p_va = train_eval_tx_get_probs(Xtr, ytr, Xva, yva, epochs=30, lr=1e-3, batch=256, pos_weight=pos_w)
+    p_tr, p_va = train_eval_tx_get_probs(Xtr, ytr, Xva, yva, epochs=args.epochs, lr=1e-3, batch=args.batch, pos_weight=pos_w)
+    _save_probs("tx9", "train", p_tr, ytr.numpy())
+    _save_probs("tx9", "val",   p_va, yva.numpy())
+
     auc, pr = compute_auc_pr(yva.numpy(), p_va)
     thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va)
     metrics.append({"model":"Transformer-9ch","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
-    p_va_iso = calibrate_isotonic(ytr.numpy(), p_tr, p_va)
-    auc, pr = compute_auc_pr(yva.numpy(), p_va_iso)
-    thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va_iso)
-    metrics_cal.append({"model":"Transformer-9ch (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
+    if not args.no_calibration:
+        p_va_iso = calibrate_isotonic(ytr.numpy(), p_tr, p_va)
+        auc, pr = compute_auc_pr(yva.numpy(), p_va_iso)
+        thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va_iso)
+        metrics_cal.append({"model":"Transformer-9ch (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
-    for st in np.unique(st_va):
-        m = st_va == st
-        if m.sum() >= 50:
-            auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
-            slices_st.append({"model":"Transformer-9ch","sponsor_type":st,"n":int(m.sum()),
-                              "auc":auc_s,"prauc":pr_s})
-    for b in ["1-2","3-5","6-10"]:
-        m = len_va == b
-        if m.sum() >= 50:
-            auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
-            slices_len.append({"model":"Transformer-9ch","bucket":b,"n":int(m.sum()),
-                               "auc":auc_s,"prauc":pr_s})
+        # reuse st_va, len_va from GRU block (same split)
+        for st in np.unique(st_va):
+            m = st_va == st
+            if m.sum() >= 50:
+                auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
+                slices_st.append({"model":"Transformer-9ch","sponsor_type":st,"n":int(m.sum()),
+                                  "auc":auc_s,"prauc":pr_s})
+        for b in ["1-2","3-5","6-10"]:
+            m = len_va == b
+            if m.sum() >= 50:
+                auc_s, pr_s = compute_auc_pr(yva.numpy()[m], p_va_iso[m])
+                slices_len.append({"model":"Transformer-9ch","bucket":b,"n":int(m.sum()),
+                                   "auc":auc_s,"prauc":pr_s})
 
     # ---------------- Combined (9+4) ----------------
-    Xn, Xc, yC, Lc, sponsorsC, vocab_sizes, *extra = build_sequences_with_cats_trends(
-        "data/aact_extracted.csv", max_seq_len=10, verbose=False
-    )
+    seq_out = build_sequences_with_cats_trends("data/aact_extracted.csv", max_seq_len=10, verbose=False)
+    # tolerate extra returns (e.g., vocab maps):
+    Xn, Xc, yC, Lc, sponsorsC, vocab_sizes, *extra = seq_out
     Xn_tr, Xn_va = Xn[tr_idx], Xn[va_idx]
     Xc_tr, Xc_va = Xc[tr_idx], Xc[va_idx]
     yC_tr, yC_va = yC[tr_idx], yC[va_idx]
     L_tr, L_va   = Lc[tr_idx], Lc[va_idx]
     pos_w2 = torch.tensor((yC_tr==0).sum().item()/max((yC_tr==1).sum().item(),1), dtype=torch.float32) * 1.2
 
-    p_tr, p_va = train_eval_combined_get_probs(Xn_tr, Xc_tr, yC_tr, L_tr, Xn_va, Xc_va, yC_va, L_va,
-                                               vocab_sizes, epochs=30, lr=1e-3, batch=256, pos_weight=pos_w2)
+    p_tr, p_va = train_eval_combined_get_probs(
+        Xn_tr, Xc_tr, yC_tr, L_tr, Xn_va, Xc_va, yC_va, L_va,
+        vocab_sizes, epochs=args.epochs, lr=1e-3, batch=args.batch, pos_weight=pos_w2
+    )
+    _save_probs("comb9p4", "train", p_tr, yC_tr.numpy())
+    _save_probs("comb9p4", "val",   p_va, yC_va.numpy())
+
     auc, pr = compute_auc_pr(yC_va.numpy(), p_va)
     thr, acc_thr, f1_thr = best_f1_threshold(yC_va.numpy(), p_va)
     metrics.append({"model":"Combined-9+4","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
-    p_va_iso = calibrate_isotonic(yC_tr.numpy(), p_tr, p_va)
-    auc, pr = compute_auc_pr(yC_va.numpy(), p_va_iso)
-    thr, acc_thr, f1_thr = best_f1_threshold(yC_va.numpy(), p_va_iso)
-    metrics_cal.append({"model":"Combined-9+4 (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
+    if not args.no_calibration:
+        p_va_iso = calibrate_isotonic(yC_tr.numpy(), p_tr, p_va)
+        auc, pr = compute_auc_pr(yC_va.numpy(), p_va_iso)
+        thr, acc_thr, f1_thr = best_f1_threshold(yC_va.numpy(), p_va_iso)
+        metrics_cal.append({"model":"Combined-9+4 (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
 
-    st_vaC = np.array([st_map.get(s, "unknown") for s in np.array(sponsorsC)[va_idx]])
-    len_vaC = bucket_histlen(Lc[va_idx].numpy())
-    for st in np.unique(st_vaC):
-        m = st_vaC == st
-        if m.sum() >= 50:
-            auc_s, pr_s = compute_auc_pr(yC_va.numpy()[m], p_va_iso[m])
-            slices_st.append({"model":"Combined-9+4","sponsor_type":st,"n":int(m.sum()),
-                              "auc":auc_s,"prauc":pr_s})
-    for b in ["1-2","3-5","6-10"]:
-        m = len_vaC == b
-        if m.sum() >= 50:
-            auc_s, pr_s = compute_auc_pr(yC_va.numpy()[m], p_va_iso[m])
-            slices_len.append({"model":"Combined-9+4","bucket":b,"n":int(m.sum()),
-                               "auc":auc_s,"prauc":pr_s})
+        st_vaC = np.array([st_map.get(s, "unknown") for s in np.array(sponsorsC)[va_idx]])
+        len_vaC = bucket_histlen(Lc[va_idx].numpy())
+        for st in np.unique(st_vaC):
+            m = st_vaC == st
+            if m.sum() >= 50:
+                auc_s, pr_s = compute_auc_pr(yC_va.numpy()[m], p_va_iso[m])
+                slices_st.append({"model":"Combined-9+4","sponsor_type":st,"n":int(m.sum()),
+                                  "auc":auc_s,"prauc":pr_s})
+        for b in ["1-2","3-5","6-10"]:
+            m = len_vaC == b
+            if m.sum() >= 50:
+                auc_s, pr_s = compute_auc_pr(yC_va.numpy()[m], p_va_iso[m])
+                slices_len.append({"model":"Combined-9+4","bucket":b,"n":int(m.sum()),
+                                   "auc":auc_s,"prauc":pr_s})
 
     # ---------------- Save everything ----------------
     cols = ["model", "val_auc", "val_prauc", "val_best_thr", "val_best_f1"]
+
     df_overall = pd.DataFrame(metrics)
     if not df_overall.empty:
         for c in cols:
@@ -386,30 +428,37 @@ if __name__ == "__main__":
                 df_overall[c] = None
         df_overall = df_overall[cols].sort_values("val_auc", ascending=False)
 
-    df_overall_cal = pd.DataFrame(metrics_cal)
-    if not df_overall_cal.empty:
-        for c in cols:
-            if c not in df_overall_cal.columns:
-                df_overall_cal[c] = None
-        df_overall_cal = df_overall_cal[cols].sort_values("val_auc", ascending=False)
-
-    df_st = pd.DataFrame(slices_st).sort_values(["model","sponsor_type"]) if slices_st else pd.DataFrame(columns=["model","sponsor_type","n","auc","prauc"])
-    df_len = pd.DataFrame(slices_len).sort_values(["model","bucket"]) if slices_len else pd.DataFrame(columns=["model","bucket","n","auc","prauc"])
-
     print("\n=== OVERALL (uncalibrated) ===")
     print(df_overall.to_string(index=False))
-    print("\n=== OVERALL (isotonic-calibrated, +best-F1 threshold) ===")
-    print(df_overall_cal.to_string(index=False))
 
     df_overall.to_csv(os.path.join(OUTDIR, "metrics_overall.csv"), index=False)
-    df_overall_cal.to_csv(os.path.join(OUTDIR, "metrics_overall_calibrated.csv"), index=False)
-    df_st.to_csv(os.path.join(OUTDIR, "slices_sponsor_type.csv"), index=False)
-    df_len.to_csv(os.path.join(OUTDIR, "slices_histlen.csv"), index=False)
     with open(os.path.join(OUTDIR, "metrics_overall.json"), "w") as f:
         json.dump(df_overall.to_dict(orient="records"), f, indent=2)
-    with open(os.path.join(OUTDIR, "metrics_overall_calibrated.json"), "w") as f:
-        json.dump(df_overall_cal.to_dict(orient="records"), f, indent=2)
+
+    if not args.no_calibration:
+        df_overall_cal = pd.DataFrame(metrics_cal)
+        if not df_overall_cal.empty:
+            for c in cols:
+                if c not in df_overall_cal.columns:
+                    df_overall_cal[c] = None
+            df_overall_cal = df_overall_cal[cols].sort_values("val_auc", ascending=False)
+
+        print("\n=== OVERALL (isotonic-calibrated, +best-F1 threshold) ===")
+        print(df_overall_cal.to_string(index=False))
+
+        df_overall_cal.to_csv(os.path.join(OUTDIR, "metrics_overall_calibrated.csv"), index=False)
+        with open(os.path.join(OUTDIR, "metrics_overall_calibrated.json"), "w") as f:
+            json.dump(df_overall_cal.to_dict(orient="records"), f, indent=2)
+    else:
+        print("\n(calibration skipped via --no-calibration)")
+
+    if not args.no_calibration:
+        df_st = pd.DataFrame(slices_st).sort_values(["model","sponsor_type"]) if slices_st else pd.DataFrame(columns=["model","sponsor_type","n","auc","prauc"])
+        df_len = pd.DataFrame(slices_len).sort_values(["model","bucket"]) if slices_len else pd.DataFrame(columns=["model","bucket","n","auc","prauc"])
+        df_st.to_csv(os.path.join(OUTDIR, "slices_sponsor_type.csv"), index=False)
+        df_len.to_csv(os.path.join(OUTDIR, "slices_histlen.csv"), index=False)
 
     print("✅ Saved:",
-          "results/metrics_overall.csv, results/metrics_overall_calibrated.csv,",
-          "results/slices_sponsor_type.csv, results/slices_histlen.csv")
+          "results/metrics_overall.csv,",
+          ("results/metrics_overall_calibrated.csv," if not args.no_calibration else ""),
+          ("results/slices_sponsor_type.csv, results/slices_histlen.csv" if not args.no_calibration else ""))

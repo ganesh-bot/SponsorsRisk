@@ -1,283 +1,186 @@
-import os
+# scripts/plot_curves.py
+import os, argparse, glob, json
 import numpy as np
 import pandas as pd
-import torch
-import torch.nn.functional as F
 import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
+from sklearn.calibration import calibration_curve
 
-from sklearn.metrics import (
-    roc_curve, precision_recall_curve, RocCurveDisplay,
-    PrecisionRecallDisplay, brier_score_loss
-)
-from sklearn.calibration import CalibrationDisplay
-from sklearn.linear_model import LogisticRegression
-from sklearn.isotonic import IsotonicRegression
+OUTDIR = "results/plots"
+PROBDIR = "results/probs"
+os.makedirs(OUTDIR, exist_ok=True)
 
-from src.prepare_sequences import (
-    build_sequences_rich_trends,
-    build_sequences_with_cats_trends,
-)
-from run_baseline import build_baseline_samples
-from src.model import SponsorRiskGRU
-from src.model_transformer import SponsorRiskTransformer
-from src.model_combined import CombinedGRU
-from src.train import infer_lengths_from_padding
+MODEL_KEYS = {
+    "baseline3": "Baseline-3F+trends",
+    "baseline7": "Baseline-7F+trends",
+    "gru9":      "GRU-9ch",
+    "tx9":       "Transformer-9ch",
+    "comb9p4":   "Combined-9+4",
+}
 
-import argparse
+def _load(split_key: str):
+    """Return dict: key -> (y, p) for a given split ('train' or 'val')."""
+    out = {}
+    for k in MODEL_KEYS:
+        p_path = os.path.join(PROBDIR, f"{k}_{split_key}_probs.npy")
+        y_path = os.path.join(PROBDIR, f"{k}_{split_key}_labels.npy")
+        if os.path.exists(p_path) and os.path.exists(y_path):
+            p = np.load(p_path)
+            y = np.load(y_path)
+            out[MODEL_KEYS[k]] = (y, p)
+    return out
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-PLOTS_DIR = "results/plots"
+def _plot_save(path, fig):
+    fig.savefig(path, dpi=160, bbox_inches="tight")
+    plt.close(fig)
 
-# ---------------- helpers ----------------
+def plot_roc(models, split="val"):
+    paths = {}
+    for name, (y, p) in models.items():
+        fpr, tpr, _ = roc_curve(y, p)
+        roc_auc = auc(fpr, tpr)
+        fig = plt.figure()
+        plt.plot(fpr, tpr, label=f"{name} (AUC={roc_auc:.3f})")
+        plt.plot([0,1], [0,1], linestyle="--")
+        plt.xlabel("False Positive Rate"); plt.ylabel("True Positive Rate"); plt.title(f"ROC ({split})")
+        plt.legend(loc="lower right")
+        out = os.path.join(OUTDIR, f"roc_{split}_{name.replace(' ','_')}.png")
+        _plot_save(out, fig)
+        paths[name] = out
+    return paths
 
-def train_seq_get_probs(model, Xtr, ytr, Xva, yva, epochs=30, lr=1e-3, batch=256, pos_weight=None):
-    """Train a seq model (GRU/Transformer/Combined wrapper) and return train/val probabilities."""
-    opt = torch.optim.Adam(model.parameters(), lr=lr)
-    sched = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode="min", factor=0.5, patience=2)
+def plot_pr(models, split="val"):
+    paths = {}
+    for name, (y, p) in models.items():
+        prec, rec, _ = precision_recall_curve(y, p)
+        ap = average_precision_score(y, p)
+        fig = plt.figure()
+        plt.plot(rec, prec, label=f"{name} (AP={ap:.3f})")
+        plt.xlabel("Recall"); plt.ylabel("Precision"); plt.title(f"PR ({split})")
+        plt.legend(loc="lower left")
+        out = os.path.join(OUTDIR, f"pr_{split}_{name.replace(' ','_')}.png")
+        _plot_save(out, fig)
+        paths[name] = out
+    return paths
 
-    from torch.utils.data import DataLoader, TensorDataset, RandomSampler, SequentialSampler
-    tr_ds, va_ds = TensorDataset(Xtr, ytr), TensorDataset(Xva, yva)
-    tr_ld = DataLoader(tr_ds, batch_size=batch, sampler=RandomSampler(tr_ds), pin_memory=True)
-    va_ld = DataLoader(va_ds, batch_size=batch, sampler=SequentialSampler(va_ds), pin_memory=True)
+def plot_reliability(models, split="val", n_bins=10):
+    paths = {}
+    for name, (y, p) in models.items():
+        prob_true, prob_pred = calibration_curve(y, p, n_bins=n_bins, strategy="quantile")
+        fig = plt.figure()
+        plt.plot([0,1],[0,1], linestyle="--")
+        plt.plot(prob_pred, prob_true, marker="o", label=name)
+        plt.xlabel("Predicted probability"); plt.ylabel("Observed frequency"); plt.title(f"Reliability ({split})")
+        plt.legend(loc="upper left")
+        out = os.path.join(OUTDIR, f"reliability_{split}_{name.replace(' ','_')}.png")
+        _plot_save(out, fig)
+        paths[name] = out
+    return paths
 
-    best_auc, best, pat, PATIENCE = -1.0, None, 0, 5
-    for ep in range(1, epochs+1):
-        model.train()
-        for xb, yb in tr_ld:
-            xb, yb = xb.to(DEVICE), yb.to(DEVICE)
-            L = infer_lengths_from_padding(xb)
-            logits = model(xb, L)
-            loss = F.binary_cross_entropy_with_logits(
-                logits, yb,
-                pos_weight=pos_weight.to(DEVICE) if pos_weight is not None else None
-            )
-            opt.zero_grad(); loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            opt.step()
+def plot_roc_overlay(models, split="val"):
+    import matplotlib.pyplot as plt
+    from sklearn.metrics import roc_curve, auc
+    fig = plt.figure()
+    for name, (y, p) in models.items():
+        fpr, tpr, _ = roc_curve(y, p)
+        roc_auc = auc(fpr, tpr)
+        plt.plot(fpr, tpr, label=f"{name} (AUC={roc_auc:.3f})")
+    plt.plot([0,1], [0,1], linestyle="--")
+    plt.xlabel("False Positive Rate"); plt.ylabel("True Positive Rate")
+    plt.title(f"ROC ({split})"); plt.legend(loc="lower right")
+    out = os.path.join(OUTDIR, f"roc_{split}_overlay.png")
+    fig.savefig(out, dpi=160, bbox_inches="tight"); plt.close(fig)
+    return out
 
-        # quick val pass for scheduler & patience using logloss
-        model.eval(); allp, ally = [], []
-        with torch.no_grad():
-            for xb, yb in va_ld:
-                xb, yb = xb.to(DEVICE), yb.to(DEVICE)
-                L = infer_lengths_from_padding(xb)
-                allp.append(torch.sigmoid(model(xb, L)).cpu()); ally.append(yb.cpu())
-        y_true = torch.cat(ally).numpy(); p_va = torch.cat(allp).numpy()
-        eps = 1e-7
-        val_logloss = -np.mean(y_true*np.log(p_va+eps) + (1-y_true)*np.log(1-p_va+eps))
-        sched.step(val_logloss)
+def plot_pr_overlay(models, split="val"):
+    import matplotlib.pyplot as plt
+    from sklearn.metrics import precision_recall_curve, average_precision_score
+    fig = plt.figure()
+    for name, (y, p) in models.items():
+        prec, rec, _ = precision_recall_curve(y, p)
+        ap = average_precision_score(y, p)
+        plt.plot(rec, prec, label=f"{name} (AP={ap:.3f})")
+    plt.xlabel("Recall"); plt.ylabel("Precision")
+    plt.title(f"PR ({split})"); plt.legend(loc="lower left")
+    out = os.path.join(OUTDIR, f"pr_{split}_overlay.png")
+    fig.savefig(out, dpi=160, bbox_inches="tight"); plt.close(fig)
+    return out
 
-        # simple auc tracking (threshold-free)
-        try:
-            from sklearn.metrics import roc_auc_score
-            auc = roc_auc_score(y_true, p_va)
-        except Exception:
-            auc = -1.0
+# --- Fig 3: reliability overlay for Combined-9+4 (uncal vs iso) ---
+def plot_reliability_combined_calibrated(split="val"):
+    from sklearn.isotonic import IsotonicRegression
+    from sklearn.calibration import calibration_curve
+    import matplotlib.pyplot as plt
+    import numpy as np, os
 
-        if auc > best_auc:
-            best_auc, best, pat = auc, {k:v.cpu().clone() for k,v in model.state_dict().items()}, 0
-        else:
-            pat += 1
-            if pat >= PATIENCE:
-                break
+    PROBDIR = "results/probs"
+    OUTDIR  = "results/plots"
+    os.makedirs(OUTDIR, exist_ok=True)
 
-    if best is not None:
-        model.load_state_dict(best)
+    # load train/val for Combined-9+4
+    p_tr = np.load(os.path.join(PROBDIR, "comb9p4_train_probs.npy"))
+    y_tr = np.load(os.path.join(PROBDIR, "comb9p4_train_labels.npy"))
+    p_va = np.load(os.path.join(PROBDIR, f"comb9p4_{split}_probs.npy"))
+    y_va = np.load(os.path.join(PROBDIR, f"comb9p4_{split}_labels.npy"))
 
-    def infer_probs(X, batch=512):
-        model.eval(); out = []
-        with torch.no_grad():
-            for i in range(0, len(X), batch):
-                xb = X[i:i+batch].to(DEVICE)
-                L = infer_lengths_from_padding(xb)
-                out.append(torch.sigmoid(model(xb, L)).cpu())
-        return torch.cat(out).numpy()
+    # uncalibrated reliability
+    prob_true_u, prob_pred_u = calibration_curve(y_va, p_va, n_bins=10, strategy="quantile")
 
-    p_tr = infer_probs(Xtr)
-    p_va = infer_probs(Xva)
-    return p_tr, p_va
+    # isotonic on train → transform val
+    iso = IsotonicRegression(out_of_bounds="clip")
+    iso.fit(p_tr, y_tr)
+    p_va_iso = iso.transform(p_va)
+    prob_true_c, prob_pred_c = calibration_curve(y_va, p_va_iso, n_bins=10, strategy="quantile")
 
-def calibrate_isotonic(y_tr, p_tr, p_va):
-    ir = IsotonicRegression(out_of_bounds="clip")
-    ir.fit(p_tr, y_tr)
-    return ir.transform(p_va)
+    fig = plt.figure()
+    plt.plot([0,1],[0,1], linestyle="--")
+    plt.plot(prob_pred_u, prob_true_u, marker="o", label="Uncalibrated")
+    plt.plot(prob_pred_c, prob_true_c, marker="o", label="Isotonic-calibrated")
+    plt.xlabel("Predicted probability"); plt.ylabel("Observed frequency")
+    plt.title(f"Reliability (Combined-9+4, {split})")
+    plt.legend(loc="upper left")
+    out = os.path.join(OUTDIR, f"reliability_{split}_combined_uncal_vs_iso.png")
+    fig.savefig(out, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+    print("✅ Fig 3 saved:", out)
 
-def plot_all_curves(y_val, p_val, title_prefix, out_dir):
-    os.makedirs(out_dir, exist_ok=True)
 
-    # ROC
-    fpr, tpr, _ = roc_curve(y_val, p_val)
-    RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
-    plt.title(f"{title_prefix} - ROC")
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f"{title_prefix}_ROC.png"), dpi=180)
-    plt.close()
-
-    # PR
-    prec, rec, _ = precision_recall_curve(y_val, p_val)
-    PrecisionRecallDisplay(precision=prec, recall=rec).plot()
-    plt.title(f"{title_prefix} - PR")
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f"{title_prefix}_PR.png"), dpi=180)
-    plt.close()
-
-    # Reliability (calibration curve)
-    fig, ax = plt.subplots()
-    CalibrationDisplay.from_predictions(y_val, p_val, n_bins=10, ax=ax)
-    bs = brier_score_loss(y_val, p_val)
-    ax.set_title(f"{title_prefix} - Reliability (Brier={bs:.3f})")
-    ax.grid(True, alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(os.path.join(out_dir, f"{title_prefix}_Reliability.png"), dpi=180)
-    plt.close()
-
-# ---------------- main ----------------
-
-if __name__ == "__main__":
+def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--include_baseline", action="store_true", help="Also plot for Baseline-7F+trends")
-    ap.add_argument("--epochs", type=int, default=30)
-    ap.add_argument("--batch", type=int, default=256)
+    ap.add_argument("--split", choices=["train","val","both"], default="val")
     args = ap.parse_args()
 
-    os.makedirs(PLOTS_DIR, exist_ok=True)
-
-    # Load split
-    tr_idx = np.load("splits/train_idx.npy")
-    va_idx = np.load("splits/val_idx.npy")
-
-    # ---------------- Baseline (optional) ----------------
+    splits = ["val"] if args.split != "both" else ["train","val"]
     rows = []
+    for split in splits:
+        models = _load(split)
+        overlay_roc = plot_roc_overlay(models, split)
+        overlay_pr  = plot_pr_overlay(models, split)
 
-    if args.include_baseline:
-        df = pd.read_csv("data/aact_extracted.csv", parse_dates=["start_date"])
-        Xb, yb, groups = build_baseline_samples(
-            df, max_hist=10, use_categoricals=True, with_trends=True, verbose=False
-        )
-        Xtr, Xva = Xb.iloc[tr_idx], Xb.iloc[va_idx]
-        ytr, yva = yb[tr_idx], yb[va_idx]
+        if not models:
+            print(f"[plot_curves] No probs found for split={split} under {PROBDIR}. Run compare_all.py first.")
+            continue
+        roc_paths = plot_roc(models, split)
+        pr_paths = plot_pr(models, split)
+        rel_paths = plot_reliability(models, split)
+        for name in models:
+            rows.append({
+                "split": split,
+                "model": name,
+                "roc_path": roc_paths.get(name, ""),
+                "pr_path": pr_paths.get(name, ""),
+                "reliability_path": rel_paths.get(name, ""),
+            })
 
-        lr = LogisticRegression(max_iter=500, class_weight="balanced")
-        lr.fit(Xtr, ytr)
-        p_tr = lr.predict_proba(Xtr)[:, 1]
-        p_va = lr.predict_proba(Xva)[:, 1]
+    if rows:
+        df = pd.DataFrame(rows)
+        df.to_csv(os.path.join(OUTDIR, "plot_index.csv"), index=False)
+        print("✅ Plots saved to", OUTDIR)
+    else:
+        print("No plots generated.")
 
-        # uncalibrated plots
-        plot_all_curves(yva, p_va, "Baseline7F_trends_uncal", PLOTS_DIR)
+    # Fig 3
+    plot_reliability_combined_calibrated(split="val")
 
-        # isotonic calibration & plots
-        p_va_iso = calibrate_isotonic(ytr, p_tr, p_va)
-        plot_all_curves(yva, p_va_iso, "Baseline7F_trends_iso", PLOTS_DIR)
-
-        rows.append({"model":"Baseline7F_trends_uncal", "source":"val_probs"})
-        rows.append({"model":"Baseline7F_trends_iso",   "source":"val_probs_iso"})
-
-    # ---------------- GRU (9ch) ----------------
-    X, y, L, _ = build_sequences_rich_trends("data/aact_extracted.csv", max_seq_len=10, verbose=False)
-    Xtr, Xva = X[tr_idx], X[va_idx]; ytr, yva = y[tr_idx], y[va_idx]
-    pos_w = torch.tensor((ytr==0).sum().item()/max((ytr==1).sum().item(),1), dtype=torch.float32) * 1.2
-
-    gru = SponsorRiskGRU(input_dim=Xtr.shape[2], hidden_dim=64, num_layers=1, dropout=0.1).to(DEVICE)
-    p_tr, p_va = train_seq_get_probs(gru, Xtr, ytr, Xva, yva, epochs=args.epochs, lr=1e-3, batch=args.batch, pos_weight=pos_w)
-    plot_all_curves(yva.numpy(), p_va, "GRU9_uncal", PLOTS_DIR)
-    p_va_iso = calibrate_isotonic(ytr.numpy(), p_tr, p_va)
-    plot_all_curves(yva.numpy(), p_va_iso, "GRU9_iso", PLOTS_DIR)
-    rows.append({"model":"GRU9_uncal", "source":"val_probs"})
-    rows.append({"model":"GRU9_iso",   "source":"val_probs_iso"})
-
-    # ---------------- Transformer (9ch) ----------------
-    tx = SponsorRiskTransformer(input_dim=Xtr.shape[2], d_model=64, nhead=4, num_layers=2,
-                                dim_feedforward=128, dropout=0.1).to(DEVICE)
-    p_tr, p_va = train_seq_get_probs(tx, Xtr, ytr, Xva, yva, epochs=args.epochs, lr=1e-3, batch=args.batch, pos_weight=pos_w)
-    plot_all_curves(yva.numpy(), p_va, "Transformer9_uncal", PLOTS_DIR)
-    p_va_iso = calibrate_isotonic(ytr.numpy(), p_tr, p_va)
-    plot_all_curves(yva.numpy(), p_va_iso, "Transformer9_iso", PLOTS_DIR)
-    rows.append({"model":"Transformer9_uncal", "source":"val_probs"})
-    rows.append({"model":"Transformer9_iso",   "source":"val_probs_iso"})
-
-    # ---------------- Combined (9+4) ----------------
-    Xn, Xc, yC, Lc, sponsorsC, vocab_sizes = build_sequences_with_cats_trends("data/aact_extracted.csv", max_seq_len=10, verbose=False)
-    Xn_tr, Xn_va = Xn[tr_idx], Xn[va_idx]
-    Xc_tr, Xc_va = Xc[tr_idx], Xc[va_idx]
-    yC_tr, yC_va = yC[tr_idx], yC[va_idx]
-    L_tr, L_va   = Lc[tr_idx], Lc[va_idx]
-    pos_w2 = torch.tensor((yC_tr==0).sum().item()/max((yC_tr==1).sum().item(),1), dtype=torch.float32) * 1.2
-
-    cmb = CombinedGRU(num_dim=Xn_tr.shape[2], cat_vocab_sizes=vocab_sizes,
-                      emb_dim=16, hidden_dim=64, num_layers=1, dropout=0.1).to(DEVICE)
-    # wrap combined into the same training util by adapting signature:
-    def train_combined(cmb_model, Xn_tr, Xc_tr, y_tr, L_tr, Xn_va, Xc_va, y_va, L_va, epochs, lr, batch, pos_weight):
-        opt = torch.optim.Adam(cmb_model.parameters(), lr=lr)
-        sched = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode="min", factor=0.5, patience=2)
-        from torch.utils.data import DataLoader, TensorDataset, RandomSampler, SequentialSampler
-        tr_ds = TensorDataset(Xn_tr, Xc_tr, L_tr, y_tr)
-        va_ds = TensorDataset(Xn_va, Xc_va, L_va, y_va)
-        tr_ld = DataLoader(tr_ds, batch_size=batch, sampler=RandomSampler(tr_ds), pin_memory=True)
-        va_ld = DataLoader(va_ds, batch_size=batch, sampler=SequentialSampler(va_ds), pin_memory=True)
-
-        best_auc, best, pat, PATIENCE = -1.0, None, 0, 5
-        for ep in range(1, epochs+1):
-            cmb_model.train()
-            for xn, xc, l, yb in tr_ld:
-                xn, xc, l, yb = xn.to(DEVICE), xc.to(DEVICE), l.to(DEVICE), yb.to(DEVICE)
-                logits = cmb_model(xn, xc, l)
-                loss = F.binary_cross_entropy_with_logits(
-                    logits, yb,
-                    pos_weight=pos_weight.to(DEVICE) if pos_weight is not None else None
-                )
-                opt.zero_grad(); loss.backward()
-                torch.nn.utils.clip_grad_norm_(cmb_model.parameters(), max_norm=1.0)
-                opt.step()
-
-            # val
-            cmb_model.eval(); allp, ally = [], []
-            with torch.no_grad():
-                for xn, xc, l, yb in va_ld:
-                    xn, xc, l, yb = xn.to(DEVICE), xc.to(DEVICE), l.to(DEVICE), yb.to(DEVICE)
-                    allp.append(torch.sigmoid(cmb_model(xn, xc, l)).cpu()); ally.append(yb.cpu())
-            y_true = torch.cat(ally).numpy(); p_va = torch.cat(allp).numpy()
-            eps = 1e-7
-            val_logloss = -np.mean(y_true*np.log(p_va+eps) + (1-y_true)*np.log(1-p_va+eps))
-            sched.step(val_logloss)
-
-            try:
-                from sklearn.metrics import roc_auc_score
-                auc = roc_auc_score(y_true, p_va)
-            except Exception:
-                auc = -1.0
-
-            if auc > best_auc:
-                best_auc, best, pat = auc, {k:v.cpu().clone() for k,v in cmb_model.state_dict().items()}, 0
-            else:
-                pat += 1
-                if pat >= PATIENCE:
-                    break
-
-        if best is not None:
-            cmb_model.load_state_dict(best)
-
-        def infer_probs(Xn, Xc, L, batch=512):
-            cmb_model.eval(); out = []
-            with torch.no_grad():
-                for i in range(0, len(Xn), batch):
-                    xn, xc, l = Xn[i:i+batch].to(DEVICE), Xc[i:i+batch].to(DEVICE), L[i:i+batch].to(DEVICE)
-                    out.append(torch.sigmoid(cmb_model(xn, xc, l)).cpu())
-            return torch.cat(out).numpy()
-
-        p_tr = infer_probs(Xn_tr, Xc_tr, L_tr)
-        p_va = infer_probs(Xn_va, Xc_va, L_va)
-        return p_tr, p_va
-
-    p_tr, p_va = train_combined(cmb, Xn_tr, Xc_tr, yC_tr, L_tr, Xn_va, Xc_va, yC_va, L_va,
-                                epochs=args.epochs, lr=1e-3, batch=args.batch, pos_weight=pos_w2)
-    plot_all_curves(yC_va.numpy(), p_va, "Combined9p4_uncal", PLOTS_DIR)
-    p_va_iso = calibrate_isotonic(yC_tr.numpy(), p_tr, p_va)
-    plot_all_curves(yC_va.numpy(), p_va_iso, "Combined9p4_iso", PLOTS_DIR)
-    rows.append({"model":"Combined9p4_uncal", "source":"val_probs"})
-    rows.append({"model":"Combined9p4_iso",   "source":"val_probs_iso"})
-
-    # summary index
-    pd.DataFrame(rows).to_csv(os.path.join(PLOTS_DIR, "plot_index.csv"), index=False)
-    print(f"✅ Saved ROC/PR/Reliability plots under {PLOTS_DIR}")
+if __name__ == "__main__":
+    main()
