@@ -1,110 +1,91 @@
 # run_train_combined.py
 import numpy as np
 import torch
-from sklearn.model_selection import StratifiedGroupKFold
-from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
+import torch.nn.functional as F
+from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 
-#from src.prepare_sequences import build_sequences_with_cats
-from src.prepare_sequences import build_sequences_with_cats_trends
 from src.model_combined import CombinedGRU
-from src.train import fit
+from src.prepare_sequences import build_sequences_with_cats_trends
+from src.train.metrics import compute_auc_pr, best_f1_threshold
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if __name__ == "__main__":
-    X_num, X_cat, y, lengths, sponsors, vocab_sizes = build_sequences_with_cats_trends(
-        "data/aact_extracted.csv",
-        max_seq_len=10
-    )
-    print("Numeric dims:", X_num.shape, "Cat dims:", X_cat.shape)
+    # 1) Load numeric + categorical sequences (+ lengths + vocab sizes)
+    seq_out = build_sequences_with_cats_trends("data/aact_extracted.csv", max_seq_len=10, verbose=False)
+    # tolerate extra returns (e.g., vocab maps)
+    Xn, Xc, y, L, sponsors, vocab_sizes, *extra = seq_out
+    print("Numeric dims:", Xn.shape, "| Cat dims:", Xc.shape)
 
-    y_np = y.numpy()
-    uniq, cnts = np.unique(y_np, return_counts=True)
-    print("Label distribution:", dict(zip(uniq.tolist(), cnts.tolist())))
-    if len(uniq) < 2:
-        raise SystemExit("❗ Single-class labels. Check mapping or data.")
+    # 2) Frozen split
+    tr_idx = np.load("splits/train_idx.npy")
+    va_idx = np.load("splits/val_idx.npy")
+    Xn_tr, Xn_va = Xn[tr_idx], Xn[va_idx]
+    Xc_tr, Xc_va = Xc[tr_idx], Xc[va_idx]
+    y_tr,  y_va  = y[tr_idx],  y[va_idx]
+    L_tr,  L_va  = L[tr_idx],  L[va_idx]
 
-    sgkf = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
-    groups = np.array(sponsors)
-    tr_idx, va_idx = next(sgkf.split(np.zeros(len(y_np)), y_np, groups))
-
-    Xn_tr, Xc_tr, y_tr, L_tr = X_num[tr_idx], X_cat[tr_idx], y[tr_idx], lengths[tr_idx]
-    Xn_va, Xc_va, y_va, L_va = X_num[va_idx], X_cat[va_idx], y[va_idx], lengths[va_idx]
-
+    # 3) Model
     model = CombinedGRU(
-        num_dim=X_num.shape[2],        # 3
-        cat_vocab_sizes=vocab_sizes,   # 4 categorical fields
-        emb_dim=16,
-        hidden_dim=64,
-        num_layers=1,
-        dropout=0.1
-    )
+        num_dim=Xn.shape[2],
+        cat_vocab_sizes=vocab_sizes,
+        emb_dim=16, hidden_dim=64, num_layers=1, dropout=0.1
+    ).to(DEVICE)
 
-    # Wrap a small adapter to pass (X_num, X_cat) to fit()
-    # We'll modify fit-callsite to lambda the forward.
-    from src.train import make_loaders, evaluate, class_weight_from_labels
+    # 4) DataLoaders (tuple dataset: (Xn, Xc, L, y))
+    bs = 128
+    tr_ds = TensorDataset(Xn_tr, Xc_tr, L_tr, y_tr)
+    va_ds = TensorDataset(Xn_va, Xc_va, L_va, y_va)
+    tr_ld = DataLoader(tr_ds, batch_size=bs, sampler=RandomSampler(tr_ds), pin_memory=True)
+    va_ld = DataLoader(va_ds, batch_size=bs, sampler=SequentialSampler(va_ds), pin_memory=True)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(device)
-    pos_weight = class_weight_from_labels(y_tr).to(device)
-    optim = torch.optim.Adam(model.parameters(), lr=1e-3)
+    # 5) Loss/optim/sched (pos_weight on SAME device)
+    pos_w = torch.tensor((y_tr == 0).sum().item() / max((y_tr == 1).sum().item(), 1), dtype=torch.float32)
+    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_w.to(DEVICE))
+    opt = torch.optim.Adam(model.parameters(), lr=1e-3)
+    sched = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode="min", factor=0.5, patience=2)
 
-    # build loaders of tuples (X_num, X_cat, y)
-    from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
-    train_ds = TensorDataset(Xn_tr, Xc_tr, L_tr, y_tr)
-    val_ds   = TensorDataset(Xn_va, Xc_va, L_va, y_va)
-    train_loader = DataLoader(train_ds, batch_size=128, sampler=RandomSampler(train_ds))
-    val_loader   = DataLoader(val_ds,   batch_size=128, sampler=SequentialSampler(val_ds))
-
-    import torch.nn.functional as F
-    best_auc, best_state, patience = -1.0, None, 3
-    for ep in range(1, 16):
-        # train
+    # 6) Train (early stop on val logloss)
+    best_state, best_logloss, patience, PATIENCE = None, float("inf"), 0, 5
+    EPOCHS = 15
+    for ep in range(1, EPOCHS + 1):
         model.train()
-        tr_loss = 0.0
-        for Xn, Xc, L, yt in train_loader:
-            Xn, Xc, L, yt = Xn.to(device), Xc.to(device), L.to(device), yt.to(device)
-            logits = model(Xn, Xc, L)
-            loss = F.binary_cross_entropy_with_logits(logits, yt, pos_weight=pos_weight)
-            optim.zero_grad(); loss.backward(); optim.step()
-            tr_loss += loss.item() * yt.size(0)
+        for xn, xc, l, yb in tr_ld:
+            xn, xc, l, yb = xn.to(DEVICE), xc.to(DEVICE), l.to(DEVICE), yb.to(DEVICE)
+            logits = model(xn, xc, l)
+            loss = criterion(logits, yb)
+            opt.zero_grad(); loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            opt.step()
 
-        # eval
         model.eval()
-        all_y, all_p, va_loss = [], [], 0.0
+        all_p, all_y = [], []
         with torch.no_grad():
-            for Xn, Xc, L, yv in val_loader:
-                Xn, Xc, L, yv = Xn.to(device), Xc.to(device), L.to(device), yv.to(device)
-                logits = model(Xn, Xc, L)
-                loss = F.binary_cross_entropy_with_logits(logits, yv)
-                probs = torch.sigmoid(logits)
-                va_loss += loss.item() * yv.size(0)
-                all_y.append(yv.cpu()); all_p.append(probs.cpu())
+            for xn, xc, l, yv in va_ld:
+                xn, xc, l, yv = xn.to(DEVICE), xc.to(DEVICE), l.to(DEVICE), yv.to(DEVICE)
+                p = torch.sigmoid(model(xn, xc, l))
+                all_p.append(p.cpu()); all_y.append(yv.cpu())
+        p_va = torch.cat(all_p).numpy()
+        y_va = torch.cat(all_y).numpy()
 
-        y_true = torch.cat(all_y).numpy()
-        y_prob = torch.cat(all_p).numpy()
-        y_pred = (y_prob >= 0.5).astype(int)
+        eps = 1e-7
+        val_logloss = -np.mean(y_va * np.log(p_va + eps) + (1 - y_va) * np.log(1 - p_va + eps))
+        sched.step(val_logloss)
 
-        acc = accuracy_score(y_true, y_pred)
-        f1  = f1_score(y_true, y_pred, zero_division=0)
-        try:
-            auc = roc_auc_score(y_true, y_prob)
-        except ValueError:
-            auc = float("nan")
-
-        print(f"[Epoch {ep:02d}] train_loss={tr_loss/len(train_ds):.4f} | "
-              f"val_loss={va_loss/len(val_ds):.4f} | acc={acc:.3f} | f1={f1:.3f} | auc={auc:.3f}")
-
-        if not np.isnan(auc) and auc > best_auc:
-            best_auc = auc
-            best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
-            patience = 3
+        if val_logloss < best_logloss:
+            best_logloss, best_state, patience = val_logloss, {k: v.cpu().clone() for k, v in model.state_dict().items()}, 0
         else:
-            patience -= 1
-            if patience == 0:
-                print("Early stopping.")
+            patience += 1
+            if patience >= PATIENCE:
                 break
 
     if best_state is not None:
         model.load_state_dict(best_state)
-    torch.save(model.state_dict(), "sponsorsrisk_combined.pt")
-    print(f"✅ Saved model to sponsorsrisk_combined.pt")
-    print(f"Best validation AUC: {best_auc:.3f}")
+
+    # 7) Save + report unified metrics
+    out_path = "sponsorsrisk_combined.pt"
+    torch.save(model.state_dict(), out_path)
+    print(f"✅ Saved model to {out_path}")
+    auc, pr = compute_auc_pr(y_va, p_va)
+    thr, acc_thr, f1_thr = best_f1_threshold(y_va, p_va)
+    print(f"Val AUC: {auc:.3f} | PR-AUC: {pr:.3f} | Best-F1: {f1_thr:.3f} @ thr={thr:.3f}")

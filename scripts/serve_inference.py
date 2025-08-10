@@ -1,34 +1,29 @@
+# scripts/serve_inference.py
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List, Optional
-import pandas as pd
+from typing import List
+from src.inference.pipeline import InferencePipeline
+from src.inference.featurize import featurize_history
 
-from src.inference.pipeline import load_bundle, predict_from_sponsor_df
+app = FastAPI()
+pipe = InferencePipeline(bundle_dir="models", model_type="combined")
 
-app = FastAPI(title="SponsorsRisk Inference API", version="1.0.0")
-model, calibrator, thresholds, vocab_maps, meta = load_bundle(models_dir="models")
-
-class TrialRecord(BaseModel):
+class Trial(BaseModel):
     start_date: str
-    phase: Optional[str] = None
-    enrollment: Optional[float] = None
-    allocation: Optional[str] = None
-    masking: Optional[str] = None
-    primary_purpose: Optional[str] = None
-    intervention_types: Optional[str] = None
-    overall_status: Optional[str] = None  # helpful for trends; if unknown, pass "unknown"
+    phase: str
+    enrollment: int
+    allocation: str
+    masking: str
+    primary_purpose: str
+    intervention_types: str
+    overall_status: str
 
 class SponsorHistory(BaseModel):
-    sponsor_name: Optional[str] = None
-    trials: List[TrialRecord]
-
-@app.get("/health")
-def health():
-    return {"status": "ok", "model": "Combined-9+4", "device": str(meta.get("device", "cpu"))}
+    sponsor_name: str
+    trials: List[Trial]
 
 @app.post("/predict")
-def predict(payload: SponsorHistory):
-    # Convert trials list to DataFrame
-    df = pd.DataFrame([t.dict() for t in payload.trials])
-    result = predict_from_sponsor_df(df, model, calibrator, thresholds, vocab_maps)
-    return {"sponsor_name": payload.sponsor_name, **result}
+def predict(history: SponsorHistory):
+    Xn, Xc, L = featurize_history([t.model_dump() for t in history.trials], max_seq_len=10)
+    probs, labels = pipe.predict((Xn, Xc, L))
+    return {"sponsor_name": history.sponsor_name, "probability": probs[0], "label": int(labels[0])}

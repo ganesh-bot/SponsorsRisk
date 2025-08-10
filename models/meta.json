@@ -1,13 +1,10 @@
 {
-  "model": "Combined-9+4",
   "num_dim": 9,
-  "cat_dims": {
+  "cat_vocab_sizes": {
     "allocation": 3,
     "masking": 6,
     "primary_purpose": 11,
     "intv_type": 21
   },
-  "max_seq_len": 10,
-  "seed": 42,
-  "device": "cuda"
+  "max_seq_len": 10
 }

@@ -1,152 +1,106 @@
-import os, json, pickle
+# scripts/export_model.py
+import argparse, os, json, joblib
 import numpy as np
-import pandas as pd
 import torch
-import torch.nn.functional as F
+from src.train.metrics import compute_auc_pr, best_f1_threshold
 
-from sklearn.isotonic import IsotonicRegression
-from sklearn.metrics import precision_recall_curve
-
-from src.prepare_sequences import build_sequences_with_cats_trends
+from src.model import SponsorRiskGRU
+from src.model_transformer import SponsorRiskTransformer
 from src.model_combined import CombinedGRU
-from src.train import infer_lengths_from_padding
+from src.prepare_sequences import build_sequences_rich_trends, build_sequences_with_cats_trends
+from sklearn.isotonic import IsotonicRegression
 
-MODELS_DIR = "models"
-os.makedirs(MODELS_DIR, exist_ok=True)
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-SEED = 42
-torch.manual_seed(SEED); np.random.seed(SEED)
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def train_combined_get_probs(Xn_tr, Xc_tr, y_tr, L_tr,
-                             Xn_va, Xc_va, y_va, L_va, vocab_sizes,
-                             epochs=30, lr=1e-3, batch=256, pos_weight=None):
-    model = CombinedGRU(num_dim=Xn_tr.shape[2], cat_vocab_sizes=vocab_sizes,
-                        emb_dim=16, hidden_dim=64, num_layers=1, dropout=0.1).to(DEVICE)
+MODEL_MAP = {
+    "gru": SponsorRiskGRU,
+    "transformer": SponsorRiskTransformer,
+    "combined": CombinedGRU
+}
 
-    opt = torch.optim.Adam(model.parameters(), lr=lr)
-    sched = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode="min", factor=0.5, patience=2)
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", choices=MODEL_MAP.keys(), required=True)
+    ap.add_argument("--weights", required=True, help="Path to trained .pt file")
+    ap.add_argument("--outdir", default="models")
+    args = ap.parse_args()
 
-    from torch.utils.data import DataLoader, TensorDataset, RandomSampler, SequentialSampler
-    tr_ds = TensorDataset(Xn_tr, Xc_tr, L_tr, y_tr)
-    va_ds = TensorDataset(Xn_va, Xc_va, L_va, y_va)
-    tr_ld = DataLoader(tr_ds, batch_size=batch, sampler=RandomSampler(tr_ds), pin_memory=True)
-    va_ld = DataLoader(va_ds, batch_size=batch, sampler=SequentialSampler(va_ds), pin_memory=True)
+    os.makedirs(args.outdir, exist_ok=True)
 
-    best_auc, best_state, pat, PATIENCE = -1.0, None, 0, 5
-    for ep in range(1, epochs+1):
-        model.train()
-        for xn, xc, l, yb in tr_ld:
-            xn, xc, l, yb = xn.to(DEVICE), xc.to(DEVICE), l.to(DEVICE), yb.to(DEVICE)
-            logits = model(xn, xc, l)
-            loss = F.binary_cross_entropy_with_logits(
-                logits, yb,
-                pos_weight=pos_weight.to(DEVICE) if pos_weight is not None else None
-            )
-            opt.zero_grad(); loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            opt.step()
+    # Load frozen split
+    tr_idx = np.load("splits/train_idx.npy")
+    va_idx = np.load("splits/val_idx.npy")
 
-        # quick val for scheduler + early stopping
-        model.eval(); allp, ally = [], []
+    if args.model == "combined":
+        Xn, Xc, y, L, sponsors, vocab_sizes, *extra = build_sequences_with_cats_trends("data/aact_extracted.csv", max_seq_len=10, verbose=False)
+        model = CombinedGRU(num_dim=Xn.shape[2], cat_vocab_sizes=vocab_sizes, emb_dim=16, hidden_dim=64, num_layers=1, dropout=0.1)
+        tr_data = (Xn[tr_idx], Xc[tr_idx], L[tr_idx], y[tr_idx])
+        va_data = (Xn[va_idx], Xc[va_idx], L[va_idx], y[va_idx])
+        meta = {"num_dim": Xn.shape[2], "cat_vocab_sizes": vocab_sizes, "max_seq_len": Xn.shape[1]}
+    elif args.model == "gru":
+        X, y, lengths, sponsors = build_sequences_rich_trends("data/aact_extracted.csv", max_seq_len=10)
+        model = SponsorRiskGRU(input_dim=X.shape[2], hidden_dim=64, num_layers=1, dropout=0.1)
+        tr_data = (X[tr_idx], lengths[tr_idx], y[tr_idx])
+        va_data = (X[va_idx], lengths[va_idx], y[va_idx])
+        meta = {"input_dim": X.shape[2], "max_seq_len": X.shape[1]}
+    elif args.model == "transformer":
+        X, y, lengths, sponsors = build_sequences_rich_trends("data/aact_extracted.csv", max_seq_len=10)
+        model = SponsorRiskTransformer(input_dim=X.shape[2], d_model=64, nhead=4, num_layers=2, dim_feedforward=128, dropout=0.1)
+        tr_data = (X[tr_idx], lengths[tr_idx], y[tr_idx])
+        va_data = (X[va_idx], lengths[va_idx], y[va_idx])
+        meta = {"input_dim": X.shape[2], "max_seq_len": X.shape[1]}
+
+    # Load weights
+    model.load_state_dict(torch.load(args.weights, map_location=DEVICE))
+    model.to(DEVICE)
+    model.eval()
+
+    # Get train/val probs
+    def get_probs(data):
+        all_p, all_y = [], []
         with torch.no_grad():
-            for xn, xc, l, yb in va_ld:
-                xn, xc, l, yb = xn.to(DEVICE), xc.to(DEVICE), l.to(DEVICE), yb.to(DEVICE)
-                p = torch.sigmoid(model(xn, xc, l))
-                allp.append(p.cpu()); ally.append(yb.cpu())
-        y_true = torch.cat(ally).numpy(); p_va = torch.cat(allp).numpy()
+            if args.model == "combined":
+                Xn, Xc, L, yb = data
+                for i in range(0, len(yb), 256):
+                    xn_b = Xn[i:i+256].to(DEVICE)
+                    xc_b = Xc[i:i+256].to(DEVICE)
+                    l_b  = L[i:i+256].to(DEVICE)
+                    p = torch.sigmoid(model(xn_b, xc_b, l_b))
+                    all_p.append(p.cpu()); all_y.append(yb[i:i+256])
+            else:
+                X, L, yb = data
+                for i in range(0, len(yb), 256):
+                    xb = X[i:i+256].to(DEVICE)
+                    l_b = L[i:i+256].to(DEVICE)
+                    p = torch.sigmoid(model(xb, l_b))
+                    all_p.append(p.cpu()); all_y.append(yb[i:i+256])
+        return np.concatenate(all_p), np.concatenate(all_y)
 
-        # logloss for scheduler
-        eps = 1e-7
-        val_logloss = -np.mean(y_true*np.log(p_va+eps) + (1-y_true)*np.log(1-p_va+eps))
-        sched.step(val_logloss)
+    p_tr, y_tr = get_probs(tr_data)
+    p_va, y_va = get_probs(va_data)
 
-        # AUC for early stopping (threshold-free)
-        try:
-            from sklearn.metrics import roc_auc_score
-            auc = roc_auc_score(y_true, p_va)
-        except Exception:
-            auc = -1.0
-
-        if auc > best_auc:
-            best_auc, best_state, pat = auc, {k:v.cpu().clone() for k,v in model.state_dict().items()}, 0
-        else:
-            pat += 1
-            if pat >= PATIENCE:
-                break
-
-    if best_state is not None:
-        model.load_state_dict(best_state)
-
-    # final train/val probs for calibration
-    def infer_probs(Xn, Xc, L, batch=512):
-        model.eval(); out = []
-        with torch.no_grad():
-            for i in range(0, len(Xn), batch):
-                xn, xc, l = Xn[i:i+batch].to(DEVICE), Xc[i:i+batch].to(DEVICE), L[i:i+batch].to(DEVICE)
-                out.append(torch.sigmoid(model(xn, xc, l)).cpu())
-        return torch.cat(out).numpy(), model
-
-    p_tr, model = infer_probs(Xn_tr, Xc_tr, L_tr)
-    p_va, _     = infer_probs(Xn_va, Xc_va, L_va)
-    return model, p_tr, p_va
-
-def best_f1_threshold(y_true, y_prob):
-    p, r, t = precision_recall_curve(y_true, y_prob)
-    t = np.r_[0.0, t]
-    f1 = 2 * (p*r) / np.maximum(p + r, 1e-9)
-    k = int(np.nanargmax(f1))
-    return float(t[k])
-
-if __name__ == "__main__":
-    # 1) load data & split
-    tr_idx = np.load("splits/train_idx.npy"); va_idx = np.load("splits/val_idx.npy")
-    Xn, Xc, y, L, sponsors, vocab_sizes, = None, None, None, None, None, None
-
-    Xn, Xc, y, L, sponsors, vocab_sizes, vocab_maps = build_sequences_with_cats_trends(
-        "data/aact_extracted.csv", max_seq_len=10, verbose=False
-    )
-    Xn_tr, Xn_va = Xn[tr_idx], Xn[va_idx]
-    Xc_tr, Xc_va = Xc[tr_idx], Xc[va_idx]
-    y_tr, y_va   = y[tr_idx],  y[va_idx]
-    L_tr, L_va   = L[tr_idx],  L[va_idx]
-
-    pos_w = torch.tensor((y_tr==0).sum().item()/max((y_tr==1).sum().item(),1), dtype=torch.float32) * 1.2
-
-    # 2) train combined + get probs
-    model, p_tr, p_va = train_combined_get_probs(
-        Xn_tr, Xc_tr, y_tr, L_tr, Xn_va, Xc_va, y_va, L_va, vocab_sizes,
-        epochs=30, lr=1e-3, batch=256, pos_weight=pos_w
-    )
-
-    # 3) fit isotonic on train probs
+    # Fit isotonic calibrator
     iso = IsotonicRegression(out_of_bounds="clip")
-    iso.fit(p_tr, y_tr.numpy())
-
-    # 4) choose best-F1 threshold on calibrated val
+    iso.fit(p_tr, y_tr)
     p_va_iso = iso.transform(p_va)
-    thr = best_f1_threshold(y_va.numpy(), p_va_iso)
 
-    # 5) save artifacts
-    torch.save(model.state_dict(), os.path.join(MODELS_DIR, "sponsorsrisk_combined.pt"))
-    with open(os.path.join(MODELS_DIR, "calibrator_combined_isotonic.pkl"), "wb") as f:
-        pickle.dump(iso, f)
+    # Save model + calibrator
+    model_path = os.path.join(args.outdir, f"sponsorsrisk_{args.model}.pt")
+    torch.save(model.state_dict(), model_path)
+    joblib.dump(iso, os.path.join(args.outdir, "calibrator_isotonic.pkl"))
 
-    with open(os.path.join(MODELS_DIR, "thresholds.json"), "w") as f:
-        json.dump({"Combined-9+4": thr}, f, indent=2)
+    # Save thresholds
+    thr, acc_thr, f1_thr = best_f1_threshold(y_va, p_va_iso)
+    with open(os.path.join(args.outdir, "thresholds.json"), "w") as f:
+        json.dump({"threshold": thr, "best_f1": f1_thr}, f, indent=2)
 
-    meta = {
-        "model": "Combined-9+4",
-        "num_dim": int(Xn.shape[2]),
-        "cat_dims": {k: len(v) for k, v in vocab_maps.items()},
-        "max_seq_len": 10,
-        "seed": SEED,
-        "device": DEVICE,
-    }
-    with open(os.path.join(MODELS_DIR, "meta.json"), "w") as f:
+    # Save meta
+    with open(os.path.join(args.outdir, "meta.json"), "w") as f:
         json.dump(meta, f, indent=2)
 
-    # Persist vocabularies for inference mapping
-    with open(os.path.join(MODELS_DIR, "vocab.json"), "w") as f:
-        json.dump(vocab_maps, f, indent=2)
+    print(f"✅ Exported {args.model} to {args.outdir}")
+    auc, pr = compute_auc_pr(y_va, p_va_iso)
+    print(f"Val AUC (iso): {auc:.3f} | PR-AUC (iso): {pr:.3f} | Best-F1: {f1_thr:.3f} @ thr={thr:.3f}")
 
-    print(f"✅ Exported model bundle to '{MODELS_DIR}'\n- sponsorsrisk_combined.pt\n- calibrator_combined_isotonic.pkl\n- thresholds.json\n- meta.json\n- vocab.json")
+if __name__ == "__main__":
+    main()
