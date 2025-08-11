@@ -4,8 +4,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from src.prepare_sequences import build_sequences_rich_trends
-from src.model import SponsorRiskGRU
+from src.features.prepare_sequences import build_sequences_rich_trends
+from src.models.gru import SponsorRiskGRU
 from src.train import fit
 
 

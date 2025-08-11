@@ -4,9 +4,10 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 
-from src.model_transformer import SponsorRiskTransformer
-from src.prepare_sequences import build_sequences_rich_trends
+from src.models.transformer import SponsorRiskTransformer
+from src.features.prepare_sequences import build_sequences_rich_trends
 from src.train.metrics import compute_auc_pr, best_f1_threshold
+from src.train.loops import infer_lengths_from_padding
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     best_state, best_logloss, patience, PATIENCE = None, float("inf"), 0, 5
     EPOCHS = 15
 
-    from src.train import infer_lengths_from_padding
+
     for ep in range(1, EPOCHS + 1):
         model.train()
         for xb, yb in tr_ld:

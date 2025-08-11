@@ -4,10 +4,11 @@ import numpy as np
 import torch
 from src.train.metrics import compute_auc_pr, best_f1_threshold
 
-from src.model import SponsorRiskGRU
-from src.model_transformer import SponsorRiskTransformer
-from src.model_combined import CombinedGRU
-from src.prepare_sequences import build_sequences_rich_trends, build_sequences_with_cats_trends
+from src.models.gru import SponsorRiskGRU
+from src.models.transformer import SponsorRiskTransformer
+from src.models.combined import CombinedGRU
+from src.features.prepare_sequences import build_sequences_rich_trends, build_sequences_with_cats_trends
+
 from sklearn.isotonic import IsotonicRegression
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

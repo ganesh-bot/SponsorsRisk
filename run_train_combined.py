@@ -4,8 +4,8 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 
-from src.model_combined import CombinedGRU
-from src.prepare_sequences import build_sequences_with_cats_trends
+from src.models.combined import CombinedGRU
+from src.features.prepare_sequences import build_sequences_with_cats_trends
 from src.train.metrics import compute_auc_pr, best_f1_threshold
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

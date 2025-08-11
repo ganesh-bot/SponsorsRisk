@@ -8,16 +8,16 @@ import torch.nn.functional as F
 from sklearn.linear_model import LogisticRegression
 from sklearn.isotonic import IsotonicRegression
 
-from src.prepare_sequences import (
+from src.features.prepare_sequences import (
     build_sequences_rich_trends,          # -> X (N,T,9), y, L, sponsors
     build_sequences_with_cats_trends,     # -> X_num (N,T,9), X_cat (N,T,4), y, L, sponsors, vocab_sizes, ...
 )
 from run_baseline import build_baseline_samples  # robust baseline builder w/ trend features
 
-from src.model import SponsorRiskGRU
-from src.model_transformer import SponsorRiskTransformer
-from src.model_combined import CombinedGRU
-from src.train import infer_lengths_from_padding
+from src.models.gru import SponsorRiskGRU
+from src.models.transformer import SponsorRiskTransformer
+from src.models.combined import CombinedGRU
+from src.train.loops import infer_lengths_from_padding
 from src.train.metrics import compute_auc_pr, best_f1_threshold
 
 # ---------------- Args / device ----------------

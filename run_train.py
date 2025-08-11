@@ -3,9 +3,9 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from src.model import SponsorRiskGRU
+from src.models.gru import SponsorRiskGRU
 from src.train import fit
-from src.prepare_sequences import build_sequences_rich_trends
+from src.features.prepare_sequences import build_sequences_rich_trends
 
 class SeqDataset(Dataset):
     def __init__(self, X, y):
