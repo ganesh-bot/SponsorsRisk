@@ -556,3 +556,38 @@ def build_sequences_with_cats_trends(csv_path: str = "data/aact_extracted.csv", 
     vocab_maps = vocab  # clearer name at return site
     return X_num, X_cat, y, L, sponsors, vocab_sizes, vocab_maps
 
+import pickle
+
+def load_sequence_data(path):
+    """
+    Loads preprocessed sequence data from .pkl file.
+    Returns: X (N, T, C), y (N,), meta (dict with feature_names)
+    """
+    with open(path, "rb") as f:
+        data = pickle.load(f)
+    return data["X"], data["y"], data.get("meta", {})
+
+def build_sequence_dataset(df, max_hist=10, use_categoricals=False, with_trends=True):
+    """
+    Given a pre-filtered AACT dataframe, builds sequence tensors for modeling.
+    Returns:
+        X: np.ndarray (N, T, C) — input sequence
+        y: np.ndarray (N,) — binary labels (0/1)
+        groups: list[str] — sponsor names
+        meta: dict — contains feature_names
+    """
+    # This should point to your actual builder (adapt if needed)
+    X, y, sponsor_names, feature_names = prepare_sequence_data(
+        df,
+        max_hist=max_hist,
+        use_categoricals=use_categoricals,
+        with_trends=with_trends
+    )
+
+    meta = {
+        "feature_names": feature_names,
+        "max_hist": max_hist,
+        "variant": "7f" if use_categoricals else "3f"
+    }
+
+    return X, y, sponsor_names, meta

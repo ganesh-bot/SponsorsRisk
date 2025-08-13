@@ -220,6 +220,8 @@ if __name__ == "__main__":
     ap.add_argument("--variant", choices=["3f","7f"], default="3f",
                     help="3f: numeric-only (+ trends); 7f: numeric + categorical one-hots (+ trends)")
     ap.add_argument("--no_trends", action="store_true", help="disable trend/streak features")
+    ap.add_argument("--dump_features_csv", default=None,
+                    help="If set, write the feature matrix used for this run to CSV for SHAP (path like results/baseline_features.csv)")
     args = ap.parse_args()
 
     df = pd.read_csv("data/aact_extracted.csv", parse_dates=["start_date"])
@@ -255,3 +257,14 @@ if __name__ == "__main__":
     print(f"[Baseline {args.variant.upper()}]{' (no_trends)' if args.no_trends else ''} "
         f"acc={acc:.3f} | f1={f1:.3f} | auc={auc:.3f}")
 
+    # ---- optional: dump features for SHAP ----
+    if args.dump_features_csv:
+        import pathlib
+        pathlib.Path("results").mkdir(parents=True, exist_ok=True)
+        # dump the SAME features the model just used (train split is enough)
+        Xcols = [f"X_{c}" for c in Xtr.columns]
+        import pandas as pd
+        out = pd.DataFrame(Xtr, columns=Xcols)
+        out["y"] = ytr.astype(int)
+        out.to_csv(args.dump_features_csv, index=False)
+        print(f"[dump] wrote {args.dump_features_csv} with shape {out.shape}")
