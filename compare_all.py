@@ -26,6 +26,9 @@ parser.add_argument("--epochs", type=int, default=30)
 parser.add_argument("--batch", type=int, default=256)
 parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"])
 parser.add_argument("--no-calibration", action="store_true")
+# where to write *.npy probs/labels so plotting can find them
+parser.add_argument("--probs-dir", type=str, default=os.path.join("results", "probs_smartgencon"),
+                    help="Directory to save probs/labels for plotting (default: results/probs_smartgencon)")
 args = parser.parse_args()
 
 DEVICE = torch.device(
@@ -61,6 +64,20 @@ def sponsor_type_map(df):
             .agg(lambda s: s.value_counts().idxmax()))
     return st.to_dict()
 
+SPONSOR_TYPE_TO_ID = {"industry": 0, "nih": 1, "academic": 2, "other": 3, "unknown": 3}
+def sponsor_type_to_id(arr_like):
+    out = []
+    for s in arr_like:
+        t = str(s).strip().lower() if s is not None else "unknown"
+        # coarse normalization
+        if "industry" in t: t = "industry"
+        elif t in ("nih", "national institutes of health"): t = "nih"
+        elif ("university" in t) or ("academic" in t): t = "academic"
+        elif t == "unknown" or not t: t = "unknown"
+        else: t = "other"
+        out.append(SPONSOR_TYPE_TO_ID.get(t, 3))
+    return np.asarray(out, dtype=np.int64)
+
 def bucket_histlen(arr_like):
     """Return bucket labels for history length: 1–2, 3–5, 6–10."""
     arr = np.asarray(arr_like)
@@ -71,12 +88,44 @@ def bucket_histlen(arr_like):
     return out
 
 # ---- Save raw probabilities for later plots/calibration (S2) ----
-PROB_DIR = os.path.join(OUTDIR, "probs")
+PROB_DIR = args.probs_dir
 os.makedirs(PROB_DIR, exist_ok=True)
 
 def _save_probs(name: str, split: str, probs: np.ndarray, labels: np.ndarray):
     np.save(os.path.join(PROB_DIR, f"{name}_{split}_probs.npy"), probs)
     np.save(os.path.join(PROB_DIR, f"{name}_{split}_labels.npy"), labels)
+
+def _ece_brier(y: np.ndarray, p: np.ndarray, n_bins: int = 10):
+    """
+    Quantile-binned ECE + Brier, matching sklearn's calibration_curve('quantile').
+    Handles dropped (empty) bins by weighting ONLY non-empty bins.
+    """
+    from sklearn.calibration import calibration_curve
+    y = np.asarray(y); p = np.asarray(p)
+    brier = float(np.mean((p - y) ** 2))
+    # if probabilities are (near) constant, ECE is trivially zero
+    if np.allclose(p.min(), p.max()):
+        return 0.0, brier
+
+    # Compute the same quantile edges calibration_curve uses, then drop duplicates
+    q = np.linspace(0, 1, n_bins + 1)
+    edges = np.quantile(p, q)
+    edges = np.unique(edges)  # remove duplicates -> reduces effective bin count
+    if edges.size < 2:
+        return 0.0, brier
+
+    # Bin indices 0..K-1 using the effective edges
+    bins = np.digitize(p, edges[1:-1], right=False)  # length N, values in [0, K-1]
+    counts = np.bincount(bins, minlength=edges.size - 1)  # counts per effective bin
+    non_empty = counts > 0
+    counts = counts[non_empty]
+
+    # Calibration stats for the same non-empty bins (K' bins)
+    prob_true, prob_pred = calibration_curve(y, p, n_bins=n_bins, strategy="quantile")
+    # Now prob_true/prob_pred length == counts length
+    w = counts / counts.sum()
+    ece = float(np.sum(w * np.abs(prob_true - prob_pred)))
+    return ece, brier
 
 # ============================================================
 # Trainers (with scheduler, patience, grad clipping)
@@ -250,14 +299,19 @@ if __name__ == "__main__":
     _save_probs("baseline3", "val",   p3_va, y3va)
 
     auc, pr = compute_auc_pr(y3va, p3_va)
+    ece, brier = _ece_brier(y3va, p3_va)
     thr, acc_thr, f1_thr = best_f1_threshold(y3va, p3_va)
-    metrics.append({"model":"Baseline-3F+trends","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
-
+    metrics.append({"model":"Baseline-3F+trends","val_auc":auc,"val_prauc":pr,
+                    "val_ece":ece,"val_brier":brier,
+                    "val_best_thr":thr,"val_best_f1":f1_thr})
     if not args.no_calibration:
         p3_va_iso = calibrate_isotonic(y3tr, p3_tr, p3_va)
         auc, pr = compute_auc_pr(y3va, p3_va_iso)
+        ece, brier = _ece_brier(y3va, p3_va_iso)
         thr, acc_thr, f1_thr = best_f1_threshold(y3va, p3_va_iso)
-        metrics_cal.append({"model":"Baseline-3F+trends (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
+        metrics_cal.append({"model":"Baseline-3F+trends (iso)","val_auc":auc,"val_prauc":pr,
+                            "val_ece":ece,"val_brier":brier,
+                            "val_best_thr":thr,"val_best_f1":f1_thr})
 
     sponsors3 = groups3
     histlen_va = bucket_histlen(X3va["hist_len"].values)
@@ -290,15 +344,19 @@ if __name__ == "__main__":
     _save_probs("baseline7", "val",   p7_va, y7va)
 
     auc, pr = compute_auc_pr(y7va, p7_va)
+    ece, brier = _ece_brier(y7va, p7_va)
     thr, acc_thr, f1_thr = best_f1_threshold(y7va, p7_va)
-    metrics.append({"model":"Baseline-7F+trends","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
-
+    metrics.append({"model":"Baseline-7F+trends","val_auc":auc,"val_prauc":pr,
+                    "val_ece":ece,"val_brier":brier,
+                    "val_best_thr":thr,"val_best_f1":f1_thr})
     if not args.no_calibration:
         p7_va_iso = calibrate_isotonic(y7tr, p7_tr, p7_va)
         auc, pr = compute_auc_pr(y7va, p7_va_iso)
+        ece, brier = _ece_brier(y7va, p7_va_iso)
         thr, acc_thr, f1_thr = best_f1_threshold(y7va, p7_va_iso)
-        metrics_cal.append({"model":"Baseline-7F+trends (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
-
+        metrics_cal.append({"model":"Baseline-7F+trends (iso)","val_auc":auc,"val_prauc":pr,
+                            "val_ece":ece,"val_brier":brier,
+                            "val_best_thr":thr,"val_best_f1":f1_thr})
         st_va = np.array([st_map.get(s, "unknown") for s in sponsors7[va_idx]])
         for st in np.unique(st_va):
             m = st_va == st
@@ -323,15 +381,19 @@ if __name__ == "__main__":
     _save_probs("gru9", "val",   p_va, yva.numpy())
 
     auc, pr = compute_auc_pr(yva.numpy(), p_va)
+    ece, brier = _ece_brier(yva.numpy(), p_va)
     thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va)
-    metrics.append({"model":"GRU-9ch","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
-
+    metrics.append({"model":"GRU-9ch","val_auc":auc,"val_prauc":pr,
+                    "val_ece":ece,"val_brier":brier,
+                    "val_best_thr":thr,"val_best_f1":f1_thr})
     if not args.no_calibration:
         p_va_iso = calibrate_isotonic(ytr.numpy(), p_tr, p_va)
         auc, pr = compute_auc_pr(yva.numpy(), p_va_iso)
+        ece, brier = _ece_brier(yva.numpy(), p_va_iso)
         thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va_iso)
-        metrics_cal.append({"model":"GRU-9ch (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
-
+        metrics_cal.append({"model":"GRU-9ch (iso)","val_auc":auc,"val_prauc":pr,
+                            "val_ece":ece,"val_brier":brier,
+                            "val_best_thr":thr,"val_best_f1":f1_thr})
         st_va = np.array([st_map.get(s, "unknown") for s in np.array(sponsors)[va_idx]])
         len_va = bucket_histlen(L[va_idx].numpy())
         for st in np.unique(st_va):
@@ -353,15 +415,19 @@ if __name__ == "__main__":
     _save_probs("tx9", "val",   p_va, yva.numpy())
 
     auc, pr = compute_auc_pr(yva.numpy(), p_va)
+    ece, brier = _ece_brier(yva.numpy(), p_va)
     thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va)
-    metrics.append({"model":"Transformer-9ch","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
-
+    metrics.append({"model":"Transformer-9ch","val_auc":auc,"val_prauc":pr,
+                    "val_ece":ece,"val_brier":brier,
+                    "val_best_thr":thr,"val_best_f1":f1_thr})
     if not args.no_calibration:
         p_va_iso = calibrate_isotonic(ytr.numpy(), p_tr, p_va)
         auc, pr = compute_auc_pr(yva.numpy(), p_va_iso)
+        ece, brier = _ece_brier(yva.numpy(), p_va_iso)
         thr, acc_thr, f1_thr = best_f1_threshold(yva.numpy(), p_va_iso)
-        metrics_cal.append({"model":"Transformer-9ch (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
-
+        metrics_cal.append({"model":"Transformer-9ch (iso)","val_auc":auc,"val_prauc":pr,
+                            "val_ece":ece,"val_brier":brier,
+                            "val_best_thr":thr,"val_best_f1":f1_thr})
         # reuse st_va, len_va from GRU block (same split)
         for st in np.unique(st_va):
             m = st_va == st
@@ -394,15 +460,19 @@ if __name__ == "__main__":
     _save_probs("comb9p4", "val",   p_va, yC_va.numpy())
 
     auc, pr = compute_auc_pr(yC_va.numpy(), p_va)
+    ece, brier = _ece_brier(yC_va.numpy(), p_va)
     thr, acc_thr, f1_thr = best_f1_threshold(yC_va.numpy(), p_va)
-    metrics.append({"model":"Combined-9+4","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
-
+    metrics.append({"model":"Combined-9+4","val_auc":auc,"val_prauc":pr,
+                    "val_ece":ece,"val_brier":brier,
+                    "val_best_thr":thr,"val_best_f1":f1_thr})
     if not args.no_calibration:
         p_va_iso = calibrate_isotonic(yC_tr.numpy(), p_tr, p_va)
         auc, pr = compute_auc_pr(yC_va.numpy(), p_va_iso)
+        ece, brier = _ece_brier(yC_va.numpy(), p_va_iso)
         thr, acc_thr, f1_thr = best_f1_threshold(yC_va.numpy(), p_va_iso)
-        metrics_cal.append({"model":"Combined-9+4 (iso)","val_auc":auc,"val_prauc":pr,"val_best_thr":thr,"val_best_f1":f1_thr})
-
+        metrics_cal.append({"model":"Combined-9+4 (iso)","val_auc":auc,"val_prauc":pr,
+                            "val_ece":ece,"val_brier":brier,
+                            "val_best_thr":thr,"val_best_f1":f1_thr})
         st_vaC = np.array([st_map.get(s, "unknown") for s in np.array(sponsorsC)[va_idx]])
         len_vaC = bucket_histlen(Lc[va_idx].numpy())
         for st in np.unique(st_vaC):
@@ -417,9 +487,16 @@ if __name__ == "__main__":
                 auc_s, pr_s = compute_auc_pr(yC_va.numpy()[m], p_va_iso[m])
                 slices_len.append({"model":"Combined-9+4","bucket":b,"n":int(m.sum()),
                                    "auc":auc_s,"prauc":pr_s})
+        # --- NEW: save groups + val ids for plotting (aligned to Combined-9+4 val order) ---
+        st_ids = sponsor_type_to_id(st_vaC)
+        np.save(os.path.join(PROB_DIR, "groups_val.npy"), st_ids)
+        # also persist the sponsor identifiers in val order to help any offline alignment
+        np.save(os.path.join(PROB_DIR, "val_ids.npy"), np.array(sponsorsC)[va_idx])
+        print("✅ saved group codes to", os.path.join(PROB_DIR, "groups_val.npy"),
+              "and val ids to", os.path.join(PROB_DIR, "val_ids.npy"))
 
     # ---------------- Save everything ----------------
-    cols = ["model", "val_auc", "val_prauc", "val_best_thr", "val_best_f1"]
+    cols = ["model", "val_auc", "val_prauc", "val_ece", "val_brier", "val_best_thr", "val_best_f1"]
 
     df_overall = pd.DataFrame(metrics)
     if not df_overall.empty:

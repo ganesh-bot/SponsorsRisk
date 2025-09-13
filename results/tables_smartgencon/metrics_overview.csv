@@ -1,0 +1,6 @@
+split,Model,auc,pr_auc,ece,brier
+val,Baseline-3F+trends,0.647,0.303,0.295,0.2345
+val,Baseline-7F+trends,0.654,0.308,0.288,0.2312
+val,Combined-9+4,0.663,0.314,0.319,0.251
+val,GRU-9ch,0.66,0.308,0.337,0.2622
+val,Transformer-9ch,0.657,0.312,0.336,0.2631
